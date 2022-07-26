@@ -19,11 +19,17 @@ import {
     ResourceNotFoundError
 } from './errors.js';
 
+import { fileURLToPath } from 'url';
+
 import * as fs from 'fs';
 import * as path from 'path';
 
 import MaximoConfig from './maximo-config.js';
 import { TextDecoder } from 'util';
+
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export default class MaximoClient {
 
@@ -35,8 +41,8 @@ export default class MaximoClient {
         // keep a reference to the config for later use.
         this.config = config;
 
-        this.requiredScriptVersion = '1.14.0';
-        this.currentScriptVersion = '1.14.0';
+        this.requiredScriptVersion = '1.15.0';
+        this.currentScriptVersion = '1.15.0';
 
         if (config.ca) {
             https.globalAgent.options.ca = config.ca;
@@ -579,6 +585,9 @@ export default class MaximoClient {
         // eslint-disable-next-line no-undef
         source = fs.readFileSync(path.resolve(__dirname, '../resources/sharptree.autoscript.deploy.js')).toString();
         await this._installOrUpdateScript('sharptree.autoscript.deploy', 'Sharptree Automation Script Deploy Script', source);
+
+        source = fs.readFileSync(path.resolve(__dirname, '../resources/sharptree.autoscript.screens.js')).toString();
+        await this._installOrUpdateScript('sharptree.autoscript.screens', 'Sharptree Screens Script', source);
     }
 
     // @ts-ignore

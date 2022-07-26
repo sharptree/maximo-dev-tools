@@ -1,9 +1,10 @@
+#!/usr/bin/env node
 /* eslint-disable no-case-declarations */
 /* eslint-disable indent */
 /* eslint-disable no-undef */
 /* eslint-disable-next-line no-case-declarations */
 import isValidHostname from 'is-valid-hostname';
-// const isValidHostname = require('is-valid-hostname');
+
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -22,6 +23,14 @@ const deploy = {
     command: 'deploy',
     desc: 'Deploy a single script or all the scripts in a directory.',
     builder: (yargs) => yargs
+        .option('deleteAll', {
+            desc: 'Indicates if any script not in the current deploy directory, but on the server, will be deleted from the server. This option is may be destructive, the default is false.',
+            type: 'boolean'
+        })
+        .option('deleteList', {
+            desc: 'Path to a file that contains a JSON list of the scripts on the server to delete if they exist, the default is delete.json.',
+            type: 'boolean'
+        })
         .option('directory', {
             desc: 'The directory containing the scripts to deploy.',
             type: 'string',
@@ -29,24 +38,17 @@ const deploy = {
             global: false
         })
         .option('file', {
-            desc: 'The script file to deploy.',
+            desc: 'The path to a single script file to deploy, if a relative path is provided it is relative to the --directory argument path.',
             type: 'string',
             alias: 'f',
             global: false
         })
         .option('recursive', {
-            desc: 'Include subdirectories when deploying scripts.',
+            desc: 'Indicates if subdirectories will be included when deploying all scripts, the default is true.',
             type: 'boolean',
             alias: 'r'
         })
-        .option('deleteAll', {
-            desc: 'Delete all scripts on the server that do not exist in the directory',
-            type: 'boolean'
-        })
-        .option('deleteList', {
-            desc: 'Path to a file that contains a list of the scripts on the server to delete if they exist.',
-            type: 'boolean'
-        })
+
 };
 const encrypt = {
     command: 'encrypt',
@@ -57,13 +59,13 @@ const extract = {
     desc: 'Extract scripts to a local directory.',
     builder: (yargs) => yargs
         .option('directory', {
-            desc: 'The directory to extract the scripts to.',
+            desc: 'The directory to extract the scripts to, defaults is the current directory.',
             type: 'string',
             alias: 'd',
             global: false
         })
         .option('overwrite', {
-            desc: 'Overwrite existing files if different from the server.',
+            desc: 'Overwrite existing files if different from the server, default is true.',
             type: 'boolean',
             alias: 'o',
             global: false
@@ -71,10 +73,10 @@ const extract = {
 };
 const streamLog = {
     command: 'log',
-    desc: 'String the Maximo log to a file.',
+    desc: 'Stream the Maximo log to the console.',
     builder: (yargs) => yargs
         .option('log-timeout', {
-            desc: 'Number of seconds between logging requests.',
+            desc: 'Number of seconds between logging requests, the default is 30.',
             type: 'number'
         })
 };
@@ -86,32 +88,37 @@ const argv = yarg
         type: 'boolean'
     })
     .option('apikey', {
-        desc: 'The Maximo api key.',
+        desc: 'The Maximo API key that will be used to access Maximo. If provided, the user name and password are ignored if configured.',
         type: 'string',
         alias: 'a'
     })
     .option('ca', {
-        desc: 'Path the server certificate authority (CA).',
+        desc: 'Path to the Maximo server certificate authority (CA) if it is not part of the system CA chain.',
         type: 'string'
     })
     .option('context', {
-        desc: 'The Maximo context.',
+        desc: 'The part of the URL that follows the hostname, default is maximo.',
         type: 'string',
         alias: 'c'
     })
-    .option('maxauth', {
-        desc: 'Force native Maximo authentication.',
-        type: 'boolean'
-    })
     .option('host', {
-        desc: 'The Maximo host name or IP address.',
+        desc: 'The Maximo host name or IP address *without* the http/s protocol prefix. .',
         type: 'string',
         alias: 'h'
     })
     .option('install', {
-        desc: 'Install or upgrade the required scripts if not installed or behind in version.',
+        desc: 'Indicates if the utility scripts should install and upgrade automatically, default is true.',
         type: 'boolean',
         alias: 'i'
+    })
+    .option('key', {
+        desc: 'The path to the encryption key for the settings encrypted values. A relative path is relative to the settings.json file directory.',
+        type: 'string',
+        alias: 'k'
+    })
+    .option('maxauth', {
+        desc: 'Force native Maximo authentication, default is false.',
+        type: 'boolean'
     })
     .option('password', {
         desc: 'The Maximo user password.',
@@ -119,22 +126,22 @@ const argv = yarg
         alias: 'passwd'
     })
     .option('port', {
-        desc: 'The Maximo port.',
+        desc: 'The Maximo server port, defaults to 80 if the --ssl argument is false, 443 if the --ssl argument is true.',
         type: 'number',
         alias: 'p'
     })
     .option('settings', {
-        desc: 'The path to the configuration settings.',
+        desc: 'The path to the settings file, default is settings.json.',
         type: 'string',
         alias: 's',
         default: './settings.json'
     })
     .option('ssl', {
-        desc: 'Use SSL when connecting to Maximo.',
+        desc: 'Indicates if SSL will be used, defaults to true.',
         type: 'boolean'
     })
     .option('timeout', {
-        desc: 'The connection timeout in seconds.',
+        desc: 'The connection timeout in seconds, default is 30 seconds.',
         type: 'number',
         alias: 't'
     })
@@ -164,13 +171,14 @@ class Configuration {
             password: undefined,
             port: undefined,
             ssl: true,
+            key: '.settings.json.key',
             timeout: 30,
             username: undefined,
             install: true,
             deploy: {
                 file: undefined,
                 recursive: true,
-                directory: './scripts',
+                directory: './',
                 deleteAll: false,
                 deleteList: 'delete.json'
             },
@@ -178,7 +186,7 @@ class Configuration {
                 timeout: 30
             },
             extract: {
-                directory: './scripts',
+                directory: './',
                 overwrite: true
             }
         };
@@ -216,6 +224,7 @@ class Configuration {
         this.timeout = this.__selectCLIIfDefined(args.timeout, settings.timeout);
         this.username = this.__selectCLIIfDefined(args.username, settings.username);
         this.install = this.__selectCLIIfDefined(args.install, settings.install);
+        this.key = this.__selectCLIIfDefined(args.key, settings.key);
 
         switch (this.command) {
             case 'deploy':
@@ -370,8 +379,6 @@ installOrUpgrade = config.install;
 switch (config.command) {
     case 'encrypt':
         try {
-            let i = getMaximoConfig();
-            JSON.stringify(i);
             encryptSettings(config);
             console.log(`The password and apikey if present have been encrypted in the ${config.settingsFile} settings file.`);
         } catch (error) {
@@ -458,7 +465,6 @@ switch (config.command) {
             errorExit();
         } finally {
             if (typeof client !== 'undefined') {
-                console.log('disconnecting');
                 await client.disconnect();
             }
         }
@@ -652,7 +658,10 @@ function encryptSettings(config) {
     let settings = JSON.parse(fs.readFileSync(config.settingsFile));
 
     const algorithm = 'aes-256-cbc';
-    const keyFile = path.join(path.dirname(config.settingsFile), '.settings.json.key');
+
+    const keyPath = typeof config.key !== 'undefined' && !config.key ? config.key : '.settings.json.key';
+
+    const keyFile = path.isAbsolute(keyPath) ? keyPath : path.join(path.dirname(config.settingsFile), keyPath);
 
     if (!fs.existsSync(keyFile)) {
         fs.writeFileSync(keyFile, (new Buffer.from(crypto.randomBytes(16)).toString('hex') + new Buffer.from(crypto.randomBytes(32)).toString('hex')), 'utf8');

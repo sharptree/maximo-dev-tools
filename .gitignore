@@ -120,3 +120,5 @@ dist
 .yarn/install-state.gz
 .pnp.*
 jd-gui.cfg
+
+*.key

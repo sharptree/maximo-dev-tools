@@ -106,7 +106,7 @@ function main() {
         // if the script source is available then call the deploy script.  
         // This allows the deployScript function to be called from the context directly if the script it loaded from another script.
         if (scriptSource) {
-            response.scriptName = deployScript(scriptSource, action);
+            deployScript(scriptSource, action);
         }
 
     } catch (error) {
@@ -413,9 +413,10 @@ function deployScript(scriptSource, language) {
                     } else if (error instanceof ScriptException) {
                         throw new ScriptError("error_ondeploy", "Error calling onDeploy function \"" + scriptConfig.onDeploy + "\" :" + error.message);
                     }
+                    System.out.println(error);
                 }
             }
-            return scriptConfig.autoscript;
+
         } finally {
             close(autoScriptSet);
         }

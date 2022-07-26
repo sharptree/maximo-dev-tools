@@ -33,6 +33,7 @@
     "semver": "^7.3.7",
     "temp": "^0.9.4",
     "tough-cookie": "^4.0.0",
+    "url": "^0.11.0",
     "yargs": "^17.5.1"
   },
   "devDependencies": {
