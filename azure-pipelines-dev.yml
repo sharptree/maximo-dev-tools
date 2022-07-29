@@ -10,11 +10,15 @@ steps:
           versionSpec: '16.x'
       displayName: 'Install Node.js'
 
-    - task: Npm@1
-      inputs:
-          command: install
-          customRegistry: useExternalRegistry
-          customEndpoint: 'sharptree-npm'
+    - task: npmAuthenticate@0
+        inputs:
+          workingFile: .npmrc
+          customEndpoint: sharptree-npm
+        displayName: "Authorize with private npm using root npmrc"
+
+    - script: |
+          npm run install
+      displayName: 'npm install'
 
     - script: |
           npm run build
