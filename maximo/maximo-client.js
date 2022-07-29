@@ -677,7 +677,11 @@ export default class MaximoClient {
                                     } else if (sData === '') {
                                         // do nothing on a blank line
                                     } else {
-                                        console.log(sData.substring(0, sData.lastIndexOf('\n')));
+                                        if (sData.lastIndexOf('\n') > 0) {
+                                            console.log(sData.substring(0, sData.lastIndexOf('\n')));
+                                        } else {
+                                            console.log(sData);
+                                        }
                                     }
                                 }
                             }

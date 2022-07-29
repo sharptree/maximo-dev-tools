@@ -391,6 +391,7 @@ switch (config.command) {
         try {
             client = new MaximoClient(getMaximoConfig(config));
             let deployedScripts = [];
+            let noScriptName = false;
             if (await (login(client))) {
 
                 let deployFile = async function (file) {
@@ -407,8 +408,13 @@ switch (config.command) {
                                     throw new Error('An unknown error occurred: ' + JSON.stringify(result));
                                 }
                             } else {
-                                deployedScripts.push(result.scriptName.toLowerCase());
-                                console.log(`Deployed ${file} as ${result.scriptName}`);
+                                if (typeof result.scriptName !== 'undefined' && result.scriptName) {
+                                    deployedScripts.push(result.scriptName.toLowerCase());
+                                    console.log(`Deployed ${file} as ${result.scriptName}`);
+                                } else {
+                                    noScriptName = true;
+                                    console.log(`Deployed ${file} but a script name was not returned.`);
+                                }
                             }
                         } else {
                             throw new Error('Did not receive a response from Maximo.');
@@ -443,12 +449,16 @@ switch (config.command) {
                     await deployDir(config.directory, deployFile);
 
                     if (config.deleteAll) {
-                        let allScripts = await client.getAllScriptNames();
-                        var undeployedScripts = allScripts.filter((i) => {
-                            return deployedScripts.indexOf(i) < 0;
-                        });
+                        if (!noScriptName) {
+                            let allScripts = await client.getAllScriptNames();
+                            var undeployedScripts = allScripts.filter((i) => {
+                                return deployedScripts.indexOf(i) < 0;
+                            });
 
-                        await asyncForEach(undeployedScripts, async (script) => { await client.deleteScriptIfExists(script); });
+                            await asyncForEach(undeployedScripts, async (script) => { await client.deleteScriptIfExists(script); });
+                        } else {
+                            console.warn('The delete all flag was set but one or more of the script name was not returned after deploying the script. Deleting all is an unsafe operation.  Ensure you have at least version 1.15.0 of the SHARPTREE.AUTOSCRIPT.DEPLOY script deployed.')
+                        }
                     } else if (typeof config.deleteList !== 'undefined' && config.deleteList && fs.existsSync(config.deleteList)) {
                         let deleteList = JSON.parse(fs.readFileSync(config.deleteList));
                         if (typeof deleteList !== 'undefined' && Array.isArray(deleteList)) {

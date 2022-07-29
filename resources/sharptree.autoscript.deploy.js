@@ -106,7 +106,7 @@ function main() {
         // if the script source is available then call the deploy script.  
         // This allows the deployScript function to be called from the context directly if the script it loaded from another script.
         if (scriptSource) {
-            deployScript(scriptSource, action);
+            response.scriptName = deployScript(scriptSource, action);
         }
 
     } catch (error) {
@@ -412,11 +412,13 @@ function deployScript(scriptSource, language) {
                         throw new ScriptError("ondeploy_function_notfound", "The onDeploy function \"" + scriptConfig.onDeploy + "\" was not found.");
                     } else if (error instanceof ScriptException) {
                         throw new ScriptError("error_ondeploy", "Error calling onDeploy function \"" + scriptConfig.onDeploy + "\" :" + error.message);
+                    } else {
+                        throw error;
                     }
-                    System.out.println(error);
                 }
             }
 
+            return scriptConfig.autoscript;
         } finally {
             close(autoScriptSet);
         }
