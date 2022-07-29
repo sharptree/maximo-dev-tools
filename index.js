@@ -10,7 +10,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
-
+import { homedir } from 'os';
 import MaximoConfig from './maximo/maximo-config.js';
 import MaximoClient from './maximo/maximo-client.js';
 
@@ -171,7 +171,7 @@ class Configuration {
             password: undefined,
             port: undefined,
             ssl: true,
-            key: '.settings.json.key',
+            key: homedir() + path.sep + '.settings.json.key',
             timeout: 30,
             username: undefined,
             install: true,
@@ -238,7 +238,7 @@ class Configuration {
                 this.logTimeout = this.__selectCLIIfDefined(args['log-timeout'], settings.log.timeout);
                 break;
             case 'extract':
-                this.directory = this.__selectCLIIfDefined(args.append, settings.extract.directory);
+                this.directory = this.__selectCLIIfDefined(args.directory, settings.extract.directory);
                 this.overwrite = this.__selectCLIIfDefined(args.overwrite, settings.extract.overwrite);
                 break;
         }
@@ -506,17 +506,19 @@ switch (config.command) {
                 if (typeof scriptNames !== 'undefined' && scriptNames.length > 0) {
 
                     await asyncForEach(scriptNames, async (scriptName) => {
-                        console.log(`Extracting ${scriptName}`);
-                        let scriptInfo = await client.getScript(scriptName);
-                        let fileExtension = getExtension(scriptInfo.scriptLanguage);
+                        if (typeof scriptName !== 'undefined' && scriptName) {
 
-                        let outputFile = config.directory + '/' + scriptName.toLowerCase() + fileExtension;
+                            let scriptInfo = await client.getScript(scriptName);
+                            let fileExtension = getExtension(scriptInfo.scriptLanguage);
+                            let outputFile = config.directory + '/' + scriptName.toLowerCase() + fileExtension;
 
-                        // if the file doesn't exist then just write it out.
-                        if (!fs.existsSync(outputFile) || config.overwrite) {
-                            fs.writeFileSync(outputFile, scriptInfo.script);
+                            console.log(`Extracted ${scriptName} to ${outputFile}`);
+
+                            // if the file doesn't exist then just write it out.
+                            if (!fs.existsSync(outputFile) || config.overwrite) {
+                                fs.writeFileSync(outputFile, scriptInfo.script);
+                            }
                         }
-
                     });
                 } else {
                     throw new Error('No scripts were found to extract.');
