@@ -11,10 +11,10 @@ steps:
       displayName: 'Install Node.js'
 
     - task: npmAuthenticate@0
-        inputs:
+      inputs:
           workingFile: .npmrc
           customEndpoint: sharptree-npm
-        displayName: "Authorize with private npm using root npmrc"
+      displayName: 'Authorize with private npm using root npmrc'
 
     - script: |
           npm run install
