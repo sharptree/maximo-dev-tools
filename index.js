@@ -433,7 +433,12 @@ switch (config.command) {
                             throw new Error('Did not receive a response from Maximo.');
                         }
                     } catch (error) {
-                        console.error(error);
+                        if (error && error.message) {
+                            console.error(error.message);
+                        } else {
+                            console.error(error.message);
+                        }
+
                     }
                 };
 
@@ -725,7 +730,7 @@ function decryptSettings(config) {
     }
 
     // if the password or apikey are not encrypted then return.
-    if (typeof config.password === 'undefined' || !config.password || !config.password.startsWith('{encrypted}') && (typeof config.apikey === 'undefined' || !config.apikey || !config.apikey.startsWith("{encrypted}"))) {
+    if ((typeof config.password === 'undefined' || !config.password || !config.password.startsWith('{encrypted}')) && (typeof config.apikey === 'undefined' || !config.apikey || !config.apikey.startsWith("{encrypted}"))) {
         return;
     }
 
