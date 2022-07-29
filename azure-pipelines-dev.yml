@@ -5,8 +5,20 @@ pool:
     vmImage: ubuntu-latest
 
 steps:
-    # Include the common steps for building the console app
-    - template: azure-pipelines-common.yml
+    - task: NodeTool@0
+      inputs:
+          versionSpec: '16.x'
+      displayName: 'Install Node.js'
+
+    - task: Npm@1
+      inputs:
+          command: install
+          customRegistry: useExternalRegistry
+          customEndpoint: 'sharptree-npm'
+
+    - script: |
+          npm run build
+      displayName: 'npm build'
 
     - task: Npm@1
       inputs:
