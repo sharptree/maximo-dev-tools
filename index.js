@@ -672,7 +672,7 @@ function getMaximoConfig(config) {
         allowUntrustedCerts: config.allowUntrustedCerts,
         ca: config.ca,
         maxauthOnly: config.maxauth,
-        apiKey: config.apiKey,
+        apiKey: config.apikey,
         extractLocation: (config.extract && config.extract.directory) ? config.extract.directory : undefined,
     });
 }
