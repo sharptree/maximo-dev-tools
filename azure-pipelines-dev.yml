@@ -23,7 +23,7 @@ steps:
       displayName: 'Authorize with private npm using root npmrc'
 
     - script: |
-          npm run install
+          npm install
       displayName: 'npm install'
 
     - script: |
