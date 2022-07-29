@@ -20,7 +20,7 @@
     "maximo-dev-tools": "index.js"
   },
   "author": "Jason VenHuizen",
-  "license": "ISC",
+  "license": "GPL-3.0",
   "dependencies": {
     "axios": "^0.27.2",
     "axios-cookiejar-support": "^4.0.2",
