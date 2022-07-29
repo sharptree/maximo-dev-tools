@@ -6,7 +6,7 @@ pool:
 
 steps:
     # Include the common steps for building the console app
-    - template: azure-pipelines.common.yml
+    - template: azure-pipelines-common.yml
 
     - task: Npm@1
       inputs:
