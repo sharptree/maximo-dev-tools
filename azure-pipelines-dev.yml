@@ -1,0 +1,15 @@
+trigger:
+    - develop
+
+pool:
+    vmImage: ubuntu-latest
+
+steps:
+    # Include the common steps for building the console app
+    - template: azure-pipelines.common.yml
+
+    - task: Npm@1
+      inputs:
+          command: publish
+          publishRegistry: useExternalRegistry
+          publishEndpoint: 'sharptree-npm'
