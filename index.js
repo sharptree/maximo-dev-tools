@@ -213,7 +213,7 @@ class Configuration {
 
         this.allowUntrustedCerts = this.__selectCLIIfDefined(args['allow-untrusted-certs'], settings.allowUntrustedCerts, false);
         this.apikey = this.__selectCLIIfDefined(args.apikey, settings.apikey);
-        this.ca = this.__selectCLIIfDefined(args.ca, settings.ca);
+        this.ca = this.__getFileContentsOrUndefined(this.__selectCLIIfDefined(args.ca, settings.ca));
         this.context = this.__selectCLIIfDefined(args.context, settings.context);
         this.maxauth = this.__selectCLIIfDefined(args.maxauth, settings.maxauth);
         this.host = this.__selectCLIIfDefined(args.host, settings.host);
@@ -368,6 +368,19 @@ class Configuration {
 
     __selectCLIIfDefined(clia, setting) {
         return typeof clia !== 'undefined' ? clia : setting;
+    }
+
+    __getFileContentsOrUndefined(file) {
+        if (typeof file !== 'undefined' && file) {
+            let file = path.isAbsolute(file) ? path.resolve(config.file) : path.resolve('./', config.file);
+            if (fs.existsSync(file)) {
+                return fs.readFileSync(file);
+            } else {
+                console.warn(`Could not load file ${file}`);
+            }
+        }
+
+        return undefined;
     }
 }
 
