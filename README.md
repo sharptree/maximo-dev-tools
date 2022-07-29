@@ -69,32 +69,32 @@ A sample settings JSON file is provided below with the default values.
 
 ```json
 {
-    allowUntrustedCerts: false,
-    apikey: undefined,
-    ca: undefined,
-    context: 'maximo',
-    maxauth: false,
-    host: undefined,
-    password: undefined,
-    port: undefined,
-    ssl: true,
-    key: '.settings.json.key',
-    timeout: 30,
-    username: undefined,
-    install: true,
-    deploy: {
-        file: undefined,
-        recursive: true,
-        directory: './',
-        deleteAll: false,
-        deleteList: 'delete.json'
+    "allowUntrustedCerts": false,
+    "apikey": undefined,
+    "ca": undefined,
+    "context": 'maximo',
+    "maxauth": false,
+    "host": undefined,
+    "password": undefined,
+    "port": 80|443,
+    "ssl": true,
+    "key": "~/.settings.json.key",
+    "timeout": 30,
+    "username": undefined,
+    "install": true,
+    "deploy": {
+        "file": undefined,
+        "recursive": true,
+        "directory": './',
+        "deleteAll": false,
+        "deleteList": "delete.json"
     },
-    extract: {
-        directory: './',
-        overwrite: true
+    "extract": {
+        "directory": "./",
+        "overwrite": true
     }
-    log: {
-        timeout: 30
+    "log": {
+        "timeout": 30
     },
 }
 ```

@@ -512,11 +512,12 @@ switch (config.command) {
                             let fileExtension = getExtension(scriptInfo.scriptLanguage);
                             let outputFile = config.directory + '/' + scriptName.toLowerCase() + fileExtension;
 
-                            console.log(`Extracted ${scriptName} to ${outputFile}`);
-
                             // if the file doesn't exist then just write it out.
                             if (!fs.existsSync(outputFile) || config.overwrite) {
                                 fs.writeFileSync(outputFile, scriptInfo.script);
+                                console.log(`Extracted ${scriptName} to ${outputFile}`);
+                            } else {
+                                console.log(`Script file ${outputFile} exists and overwriting is disabled, skipping.`);
                             }
                         }
                     });
