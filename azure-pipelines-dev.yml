@@ -4,7 +4,13 @@ trigger:
 pool:
     vmImage: ubuntu-latest
 
+variables:
+    - group: npm-deploy
+
 steps:
+    - script: |
+          echo "registry=$SHARPTREE-NPM" > .npmrc
+
     - task: NodeTool@0
       inputs:
           versionSpec: '16.x'
