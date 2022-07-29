@@ -9,7 +9,9 @@ variables:
 
 steps:
     - script: |
-          echo "registry=$SHARPTREE-NPM" > .npmrc
+          echo "registry=$SHARPTREE_NPM" > .npmrc
+    env:
+      SHARPTREE_NPM: $(SHARPTREE_NPM)          
 
     - task: NodeTool@0
       inputs:
