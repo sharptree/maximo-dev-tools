@@ -10,7 +10,6 @@ variables:
 steps:
     - script: |
           echo "registry=$PUBLIC_NPM" > .npmrc
-          cat .npmrc
       env:
           PUBLIC_NPM: $(PUBLIC_NPM)
       displayName: 'Setup .npmrc'
@@ -24,11 +23,13 @@ steps:
       inputs:
           workingFile: .npmrc
           customEndpoint: npm
-      displayName: 'Authorize with private npm using root npmrc'
+      displayName: 'Authorize npm'
 
-    - script: |
-          npm install
-      displayName: 'Run npm install'
+    - task: Npm@1
+      inputs:
+          verbose: true
+          command: install
+      displayName: 'Install dependencies'
 
     - task: Npm@1
       inputs:
