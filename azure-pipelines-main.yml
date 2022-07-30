@@ -24,16 +24,18 @@ steps:
       inputs:
           workingFile: .npmrc
           customEndpoint: npm
-      displayName: 'Authorize with private npm using root npmrc'
-
-    - script: |
-          npm install
-      displayName: 'Run npm install'
+          verbose: true
+      displayName: 'Authorize npm'
 
     - task: Npm@1
       inputs:
           verbose: true
+          command: install
+          publishEndpoint: 'npm'
+      displayName: 'Install dependencies'
+
+    - task: Npm@1
+      inputs:
           command: publish
-          publishRegistry: useExternalRegistry
           publishEndpoint: 'npm'
       displayName: 'Publish package'
