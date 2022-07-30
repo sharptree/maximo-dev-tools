@@ -1,0 +1,38 @@
+trigger:
+    - main
+
+pool:
+    vmImage: ubuntu-latest
+
+variables:
+    - group: npm-deploy
+
+steps:
+    - script: |
+          echo "registry=$PUBLIC_NPM" > .npmrc
+          cat .npmrc
+      env:
+          PUBLIC_NPM: $(PUBLIC_NPM)
+      displayName: 'Setup .npmrc'
+
+    - task: NodeTool@0
+      inputs:
+          versionSpec: '16.x'
+      displayName: 'Install node.js'
+
+    - task: npmAuthenticate@0
+      inputs:
+          workingFile: .npmrc
+          customEndpoint: npm
+      displayName: 'Authorize with private npm using root npmrc'
+
+    - script: |
+          npm install
+      displayName: 'Run npm install'
+
+    - task: Npm@1
+      inputs:
+          command: publish
+          publishRegistry: useExternalRegistry
+          publishEndpoint: 'npm'
+      displayName: 'Publish package'

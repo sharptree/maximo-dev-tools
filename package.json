@@ -1,0 +1,43 @@
+{
+  "name": "maximo-dev-tools",
+  "version": "1.0.0",
+  "description": "Tools used with the development of Maximo projects",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://sharptree@dev.azure.com/sharptree/Maximo%20Utilities/_git/maximo-dev-tools"
+  },
+  "keywords": [
+    "utilities",
+    "maximo",
+    "development"
+  ],
+  "bin": {
+    "maximo-dev-tools": "index.js"
+  },
+  "author": "Jason VenHuizen",
+  "license": "GPL-3.0",
+  "dependencies": {
+    "axios": "^0.27.2",
+    "axios-cookiejar-support": "^4.0.2",
+    "axios-oauth-client": "^1.5.0",
+    "axios-token-interceptor": "^0.2.0",
+    "fs": "^0.0.1-security",
+    "is-valid-hostname": "^1.0.2",
+    "os": "^0.1.2",
+    "path": "^0.12.7",
+    "semver": "^7.3.7",
+    "temp": "^0.9.4",
+    "tough-cookie": "^4.0.0",
+    "url": "^0.11.0",
+    "yargs": "^17.5.1"
+  },
+  "devDependencies": {
+    "eslint": "^8.20.0",
+    "eslint-config-prettier": "^8.5.0"
+  }
+}
