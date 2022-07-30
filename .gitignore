@@ -7,9 +7,9 @@ yarn-error.log*
 lerna-debug.log*
 
 scripts
-settings.json
+settings*.json
 delete.json
-settings.json.key
+
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
@@ -122,3 +122,5 @@ dist
 jd-gui.cfg
 
 *.key
+
+settings-mas8.json

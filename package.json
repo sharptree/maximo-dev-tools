@@ -9,7 +9,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://sharptree@dev.azure.com/sharptree/Maximo%20Utilities/_git/maximo-dev-tools"
+    "url": "https://github.com/sharptree/maximo-dev-tools.git"
   },
   "keywords": [
     "utilities",
@@ -20,7 +20,7 @@
     "maximo-dev-tools": "index.js"
   },
   "author": "Jason VenHuizen",
-  "license": "ISC",
+  "license": "GPL-3.0",
   "dependencies": {
     "axios": "^0.27.2",
     "axios-cookiejar-support": "^4.0.2",
@@ -28,6 +28,7 @@
     "axios-token-interceptor": "^0.2.0",
     "fs": "^0.0.1-security",
     "is-valid-hostname": "^1.0.2",
+    "os": "^0.1.2",
     "path": "^0.12.7",
     "semver": "^7.3.7",
     "temp": "^0.9.4",

@@ -10,7 +10,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
-
+import { homedir } from 'os';
 import MaximoConfig from './maximo/maximo-config.js';
 import MaximoClient from './maximo/maximo-client.js';
 
@@ -171,7 +171,7 @@ class Configuration {
             password: undefined,
             port: undefined,
             ssl: true,
-            key: '.settings.json.key',
+            key: homedir() + path.sep + '.settings.json.key',
             timeout: 30,
             username: undefined,
             install: true,
@@ -213,7 +213,7 @@ class Configuration {
 
         this.allowUntrustedCerts = this.__selectCLIIfDefined(args['allow-untrusted-certs'], settings.allowUntrustedCerts, false);
         this.apikey = this.__selectCLIIfDefined(args.apikey, settings.apikey);
-        this.ca = this.__selectCLIIfDefined(args.ca, settings.ca);
+        this.ca = this.__getFileContentsOrUndefined(this.__selectCLIIfDefined(args.ca, settings.ca));
         this.context = this.__selectCLIIfDefined(args.context, settings.context);
         this.maxauth = this.__selectCLIIfDefined(args.maxauth, settings.maxauth);
         this.host = this.__selectCLIIfDefined(args.host, settings.host);
@@ -238,7 +238,7 @@ class Configuration {
                 this.logTimeout = this.__selectCLIIfDefined(args['log-timeout'], settings.log.timeout);
                 break;
             case 'extract':
-                this.directory = this.__selectCLIIfDefined(args.append, settings.extract.directory);
+                this.directory = this.__selectCLIIfDefined(args.directory, settings.extract.directory);
                 this.overwrite = this.__selectCLIIfDefined(args.overwrite, settings.extract.overwrite);
                 break;
         }
@@ -369,6 +369,19 @@ class Configuration {
     __selectCLIIfDefined(clia, setting) {
         return typeof clia !== 'undefined' ? clia : setting;
     }
+
+    __getFileContentsOrUndefined(file) {
+        if (typeof file !== 'undefined' && file) {
+            let file = path.isAbsolute(file) ? path.resolve(config.file) : path.resolve('./', config.file);
+            if (fs.existsSync(file)) {
+                return fs.readFileSync(file);
+            } else {
+                console.warn(`Could not load file ${file}`);
+            }
+        }
+
+        return undefined;
+    }
 }
 
 const config = new Configuration(argv).validate();
@@ -420,7 +433,12 @@ switch (config.command) {
                             throw new Error('Did not receive a response from Maximo.');
                         }
                     } catch (error) {
-                        console.error(error);
+                        if (error && error.message) {
+                            console.error(error.message);
+                        } else {
+                            console.error(error.message);
+                        }
+
                     }
                 };
 
@@ -488,17 +506,20 @@ switch (config.command) {
                 if (typeof scriptNames !== 'undefined' && scriptNames.length > 0) {
 
                     await asyncForEach(scriptNames, async (scriptName) => {
-                        console.log(`Extracting ${scriptName}`);
-                        let scriptInfo = await client.getScript(scriptName);
-                        let fileExtension = getExtension(scriptInfo.scriptLanguage);
+                        if (typeof scriptName !== 'undefined' && scriptName) {
 
-                        let outputFile = config.directory + '/' + scriptName.toLowerCase() + fileExtension;
+                            let scriptInfo = await client.getScript(scriptName);
+                            let fileExtension = getExtension(scriptInfo.scriptLanguage);
+                            let outputFile = config.directory + '/' + scriptName.toLowerCase() + fileExtension;
 
-                        // if the file doesn't exist then just write it out.
-                        if (!fs.existsSync(outputFile) || config.overwrite) {
-                            fs.writeFileSync(outputFile, scriptInfo.script);
+                            // if the file doesn't exist then just write it out.
+                            if (!fs.existsSync(outputFile) || config.overwrite) {
+                                fs.writeFileSync(outputFile, scriptInfo.script);
+                                console.log(`Extracted ${scriptName} to ${outputFile}`);
+                            } else {
+                                console.log(`Script file ${outputFile} exists and overwriting is disabled, skipping.`);
+                            }
                         }
-
                     });
                 } else {
                     throw new Error('No scripts were found to extract.');
@@ -659,7 +680,7 @@ function getMaximoConfig(config) {
         allowUntrustedCerts: config.allowUntrustedCerts,
         ca: config.ca,
         maxauthOnly: config.maxauth,
-        apiKey: config.apiKey,
+        apiKey: config.apikey,
         extractLocation: (config.extract && config.extract.directory) ? config.extract.directory : undefined,
     });
 }
@@ -712,7 +733,7 @@ function decryptSettings(config) {
     }
 
     // if the password or apikey are not encrypted then return.
-    if (typeof config.password === 'undefined' || !config.password || !config.password.startsWith('{encrypted}') && (typeof config.apikey === 'undefined' || !config.apikey || !config.apikey.startsWith("{encrypted}"))) {
+    if ((typeof config.password === 'undefined' || !config.password || !config.password.startsWith('{encrypted}')) && (typeof config.apikey === 'undefined' || !config.apikey || !config.apikey.startsWith("{encrypted}"))) {
         return;
     }
 

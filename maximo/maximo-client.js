@@ -41,8 +41,8 @@ export default class MaximoClient {
         // keep a reference to the config for later use.
         this.config = config;
 
-        this.requiredScriptVersion = '1.15.0';
-        this.currentScriptVersion = '1.15.0';
+        this.requiredScriptVersion = '1.15.1';
+        this.currentScriptVersion = '1.15.1';
 
         if (config.ca) {
             https.globalAgent.options.ca = config.ca;
@@ -677,11 +677,7 @@ export default class MaximoClient {
                                     } else if (sData === '') {
                                         // do nothing on a blank line
                                     } else {
-                                        if (sData.lastIndexOf('\n') > 0) {
-                                            console.log(sData.substring(0, sData.lastIndexOf('\n')));
-                                        } else {
-                                            console.log(sData);
-                                        }
+                                        process.stdout.write(sData);
                                     }
                                 }
                             }
