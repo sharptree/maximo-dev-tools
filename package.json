@@ -11,6 +11,9 @@
     "type": "git",
     "url": "https://github.com/sharptree/maximo-dev-tools.git"
   },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org"
+  },
   "keywords": [
     "utilities",
     "maximo",

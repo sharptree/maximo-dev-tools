@@ -24,18 +24,13 @@ steps:
       inputs:
           workingFile: .npmrc
           customEndpoint: npm
-          verbose: true
       displayName: 'Authorize npm'
 
     - task: Npm@1
       inputs:
           verbose: true
           command: install
-          publishEndpoint: 'npm'
       displayName: 'Install dependencies'
 
-    - task: Npm@1
-      inputs:
-          command: publish
-          publishEndpoint: 'npm'
-      displayName: 'Publish package'
+    - script: |
+          npm publish
