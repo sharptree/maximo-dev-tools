@@ -31,6 +31,11 @@ steps:
           verbose: true
           command: install
       displayName: 'Install dependencies'
-
     - script: |
-          npm publish
+          cat .npmrc
+    - task: Npm@1
+      inputs:
+          command: publish
+          publishRegistry: useExternalRegistry
+          publishEndpoint: 'npm'
+      displayName: 'Publish package'
