@@ -10,7 +10,6 @@ variables:
 steps:
     - script: |
           echo "registry=$PUBLIC_NPM" > .npmrc
-          cat .npmrc
       env:
           PUBLIC_NPM: $(PUBLIC_NPM)
       displayName: 'Setup .npmrc'
@@ -31,8 +30,7 @@ steps:
           verbose: true
           command: install
       displayName: 'Install dependencies'
-    - script: |
-          cat .npmrc
+
     - task: Npm@1
       inputs:
           command: publish

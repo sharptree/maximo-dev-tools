@@ -10,7 +10,6 @@ variables:
 steps:
     - script: |
           echo "registry=$SHARPTREE_NPM" > .npmrc
-          cat .npmrc
       env:
           SHARPTREE_NPM: $(SHARPTREE_NPM)
       displayName: 'Setup .npmrc'
