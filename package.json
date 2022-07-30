@@ -9,7 +9,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://sharptree@dev.azure.com/sharptree/Maximo%20Utilities/_git/maximo-dev-tools"
+    "url": "https://github.com/sharptree/maximo-dev-tools.git"
   },
   "keywords": [
     "utilities",
