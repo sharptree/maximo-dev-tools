@@ -204,8 +204,10 @@ class Configuration {
                     errorExit();
                 }
             } else {
-                console.error(`The settings file ${args.settings} cannot be read.`);
-                errorExit();
+                if (args.settings !== './settings.json') {
+                    console.error(`The settings file ${args.settings} cannot be read.`);
+                    errorExit();
+                }
             }
         }
 
@@ -328,7 +330,6 @@ class Configuration {
             }
             return this;
         } catch (error) {
-            console.trace(error);
             console.error(`${error.message}`);
             errorExit();
         }
