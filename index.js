@@ -21,34 +21,33 @@ var installOrUpgrade = true;
 // Command line options
 const deploy = {
     command: 'deploy',
-    desc: 'Deploy a single script or all the scripts in a directory.',
+    desc: 'Deploy a single script or screen definition or all the scripts or screen definitions in a directory.',
     builder: (yargs) => yargs
         .option('deleteAll', {
-            desc: 'Indicates if any script not in the current deploy directory, but on the server, will be deleted from the server. This option is may be destructive, the default is false.',
+            desc: 'Indicates if any script not in the current deploy directory, but on the server, will be deleted from the server. This option is may be destructive, the default is false. (Does not apply to screens)',
             type: 'boolean'
         })
         .option('deleteList', {
-            desc: 'Path to a file that contains a JSON list of the scripts on the server to delete if they exist, the default is delete.json.',
+            desc: 'Path to a file that contains a JSON list of the scripts on the server to delete if they exist, the default is delete.json. (Does not apply to screens)',
             type: 'boolean'
         })
         .option('directory', {
-            desc: 'The directory containing the scripts to deploy.',
+            desc: 'The directory containing the scripts or screen definition to deploy.',
             type: 'string',
             alias: 'd',
             global: false
         })
         .option('file', {
-            desc: 'The path to a single script file to deploy, if a relative path is provided it is relative to the --directory argument path.',
+            desc: 'The path to a single script or screen definition file to deploy, if a relative path is provided it is relative to the --directory argument path.',
             type: 'string',
             alias: 'f',
             global: false
         })
         .option('recursive', {
-            desc: 'Indicates if subdirectories will be included when deploying all scripts, the default is true.',
+            desc: 'Indicates if subdirectories will be included when deploying all scripts or screen definitions, the default is true.',
             type: 'boolean',
             alias: 'r'
         })
-
 };
 const encrypt = {
     command: 'encrypt',
@@ -317,8 +316,8 @@ class Configuration {
                             throw new Error(`The provided script file ${file} does not exist.`);
                         }
 
-                        if (!file.endsWith('.py') && !file.endsWith('.js')) {
-                            throw new Error(`Only .js and .py files can be deployed. The file ${file} does not meet this requirement.`);
+                        if (!file.endsWith('.py') && !file.endsWith('.js') && !file.endsWith('.xml')) {
+                            throw new Error(`Only .js, .py and xml files can be deployed. The file ${file} does not meet this requirement.`);
                         }
                     }
 
@@ -411,7 +410,13 @@ switch (config.command) {
                 let deployFile = async function (file) {
                     try {
                         let script = fs.readFileSync(file, 'utf8');
-                        let result = await client.postScript(script, file);
+                        let result;
+                        if (file.endsWith('.xml')) {
+                            console.log('Posting screen ' + file);
+                            result = await client.postScreen(script);
+                        } else {
+                            result = await client.postScript(script, file);
+                        }
                         if (result) {
                             if (result.status === 'error') {
                                 if (result.message) {
@@ -426,8 +431,10 @@ switch (config.command) {
                                     deployedScripts.push(result.scriptName.toLowerCase());
                                     console.log(`Deployed ${file} as ${result.scriptName}`);
                                 } else {
-                                    noScriptName = true;
-                                    console.log(`Deployed ${file} but a script name was not returned.`);
+                                    if (!file.endsWith('.xml')) {
+                                        noScriptName = true;
+                                        console.log(`Deployed ${file} but a script name was not returned.`);
+                                    }
                                 }
                             }
                         } else {
@@ -453,7 +460,7 @@ switch (config.command) {
                                 await deployDir(path.resolve(directory, file.name), deployFile);
                             } else {
                                 if (!file.isDirectory()) {
-                                    if (file.name.endsWith('.js') || file.name.endsWith('.py')) {
+                                    if (file.name.endsWith('.js') || file.name.endsWith('.py') || file.name.endsWith('.xml')) {
                                         try {
                                             await deployFile(path.resolve(directory, file.name));
                                         } catch (error) {
