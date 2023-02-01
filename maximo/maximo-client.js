@@ -91,9 +91,22 @@ export default class MaximoClient {
 
 
                 if (this.config.apiKey) {
-                    request.params = { 'lean': (this.config.lean ? 'true' : 'false'), 'apikey': this.config.apiKey };
+                    if (typeof request.params !== 'undefined') {
+                        let params = request.params;
+                        params.lean = (this.config.lean ? 'true' : 'false');
+                        params.apikey = this.config.apiKey;
+                    } else {
+                        request.params = { 'lean': (this.config.lean ? 'true' : 'false'), 'apikey': this.config.apiKey };
+                    }
                 } else {
-                    request.params = { 'lean': (this.config.lean ? 'true' : 'false') };
+                    if (typeof request.params !== 'undefined') {
+                        let params = request.params;
+                        params.lean = (this.config.lean ? 'true' : 'false');
+                        request.params = params;
+                    } else {
+                        request.params = { 'lean': (this.config.lean ? 'true' : 'false') };
+                    }
+
                 }
             }
 
@@ -377,6 +390,29 @@ export default class MaximoClient {
                 Accept: 'application/json'
             },
             data: script
+        };
+
+        const result = await this.client.request(options);
+
+        return result.data;
+
+    }
+
+    async postScreen(screen) {
+
+        if (!this._isConnected) {
+            await this.connect();
+        }
+
+        const options = {
+            url: 'script/sharptree.autoscript.screens',
+            params: { designmode: true },
+            method: MaximoClient.Method.POST,
+            headers: {
+                'Content-Type': 'text/plain',
+                Accept: 'application/json'
+            },
+            data: screen
         };
 
         const result = await this.client.request(options);
