@@ -13,38 +13,39 @@ import { hideBin } from 'yargs/helpers';
 import { homedir } from 'os';
 import MaximoConfig from './maximo/maximo-config.js';
 import MaximoClient from './maximo/maximo-client.js';
+import format from 'xml-formatter';
 
 const yarg = yargs(hideBin(process.argv));
-const supportedVersions = ['7608', '7609', '76010', '76011', '7610', '7611', '7612', '7613'];
+const supportedVersions = ['7608', '7609', '76010', '76011', '7610', '7611', '7612', '7613', '8300', '8400', '8500'];
 var installOrUpgrade = true;
 
 // Command line options
 const deploy = {
     command: 'deploy',
-    desc: 'Deploy a single script or screen definition or all the scripts or screen definitions in a directory.',
+    desc: 'Deploy a single script, screen or inspection form definition or all the scripts, screens or inspection form definitions in a directory.',
     builder: (yargs) => yargs
         .option('deleteAll', {
-            desc: 'Indicates if any script not in the current deploy directory, but on the server, will be deleted from the server. This option is may be destructive, the default is false. (Does not apply to screens)',
+            desc: 'Indicates if any script not in the current deploy directory, but on the server, will be deleted from the server. This option is may be destructive, the default is false. (Does not apply to screens or inspection forms)',
             type: 'boolean'
         })
         .option('deleteList', {
-            desc: 'Path to a file that contains a JSON list of the scripts on the server to delete if they exist, the default is delete.json. (Does not apply to screens)',
+            desc: 'Path to a file that contains a JSON list of the scripts on the server to delete if they exist, the default is delete.json. (Does not apply to screens or inspection forms)',
             type: 'boolean'
         })
         .option('directory', {
-            desc: 'The directory containing the scripts or screen definition to deploy.',
+            desc: 'The directory containing the scripts, screen or inspection form definitions to deploy.',
             type: 'string',
             alias: 'd',
             global: false
         })
         .option('file', {
-            desc: 'The path to a single script or screen definition file to deploy, if a relative path is provided it is relative to the --directory argument path.',
+            desc: 'The path to a single script, screen or inspection form definition file to deploy, if a relative path is provided it is relative to the --directory argument path.',
             type: 'string',
             alias: 'f',
             global: false
         })
         .option('recursive', {
-            desc: 'Indicates if subdirectories will be included when deploying all scripts or screen definitions, the default is true.',
+            desc: 'Indicates if subdirectories will be included when deploying all scripts, screen or inspection form definitions, the default is true.',
             type: 'boolean',
             alias: 'r'
         })
@@ -55,10 +56,10 @@ const encrypt = {
 };
 const extract = {
     command: 'extract',
-    desc: 'Extract scripts to a local directory.',
+    desc: 'Extract script, screen or inspection form definitions to a local directory.',
     builder: (yargs) => yargs
         .option('directory', {
-            desc: 'The directory to extract the scripts to, defaults is the current directory.',
+            desc: 'The directory to extract the scripts, screens or inspection forms to, defaults is the current directory.',
             type: 'string',
             alias: 'd',
             global: false
@@ -67,6 +68,11 @@ const extract = {
             desc: 'Overwrite existing files if different from the server, default is true.',
             type: 'boolean',
             alias: 'o',
+            global: false
+        })
+        .option('type', {
+            desc: 'The type of object to extract, "script", "screen" of "form". Defaults to "script".',
+            type: 'string',            
             global: false
         })
 };
@@ -186,7 +192,8 @@ class Configuration {
             },
             extract: {
                 directory: './',
-                overwrite: true
+                overwrite: true,
+                type: 'script'
             }
         };
         if (args.settings) {
@@ -241,6 +248,7 @@ class Configuration {
             case 'extract':
                 this.directory = this.__selectCLIIfDefined(args.directory, settings.extract.directory);
                 this.overwrite = this.__selectCLIIfDefined(args.overwrite, settings.extract.overwrite);
+                this.type = this.__selectCLIIfDefined(args.type, settings.extract.type);
                 break;
         }
 
@@ -316,8 +324,8 @@ class Configuration {
                             throw new Error(`The provided script file ${file} does not exist.`);
                         }
 
-                        if (!file.endsWith('.py') && !file.endsWith('.js') && !file.endsWith('.xml')) {
-                            throw new Error(`Only .js, .py and xml files can be deployed. The file ${file} does not meet this requirement.`);
+                        if (!file.endsWith('.py') && !file.endsWith('.js') && !file.endsWith('.xml') && !file.endsWith('.json')) {
+                            throw new Error(`Only .js, .py, xml or json files can be deployed. The file ${file} does not meet this requirement.`);
                         }
                     }
 
@@ -409,13 +417,14 @@ switch (config.command) {
 
                 let deployFile = async function (file) {
                     try {
-                        let script = fs.readFileSync(file, 'utf8');
+                        let fileContent = fs.readFileSync(file, 'utf8');
                         let result;
                         if (file.endsWith('.xml')) {
-                            console.log('Posting screen ' + file);
-                            result = await client.postScreen(script);
+                            result = await client.postScreen(fileContent);
+                        } else if (file.endsWith('.json')) {                            
+                            result = await client.postForm(JSON.parse(fileContent));
                         } else {
-                            result = await client.postScript(script, file);
+                            result = await client.postScript(fileContent, file);
                         }
                         if (result) {
                             if (result.status === 'error') {
@@ -431,9 +440,11 @@ switch (config.command) {
                                     deployedScripts.push(result.scriptName.toLowerCase());
                                     console.log(`Deployed ${file} as ${result.scriptName}`);
                                 } else {
-                                    if (!file.endsWith('.xml')) {
+                                    if (file.endsWith('.py') || file.endsWith('.js')) {
                                         noScriptName = true;
                                         console.log(`Deployed ${file} but a script name was not returned.`);
+                                    } else {
+                                        console.log(`Deployed ${file} to Maximo.`);
                                     }
                                 }
                             }
@@ -460,7 +471,7 @@ switch (config.command) {
                                 await deployDir(path.resolve(directory, file.name), deployFile);
                             } else {
                                 if (!file.isDirectory()) {
-                                    if (file.name.endsWith('.js') || file.name.endsWith('.py') || file.name.endsWith('.xml')) {
+                                    if (file.name.endsWith('.js') || file.name.endsWith('.py') || file.name.endsWith('.xml') || file.name.endsWith('.json')) {
                                         try {
                                             await deployFile(path.resolve(directory, file.name));
                                         } catch (error) {
@@ -510,35 +521,74 @@ switch (config.command) {
         try {
             client = new MaximoClient(getMaximoConfig(config));
             if (await (login(client))) {
-                let scriptNames = await client.getAllScriptNames();
-                if (typeof scriptNames !== 'undefined' && scriptNames.length > 0) {
-
-                    await asyncForEach(scriptNames, async (scriptName) => {
-                        if (typeof scriptName !== 'undefined' && scriptName) {
-
-                            let scriptInfo = await client.getScript(scriptName);
-                            let fileExtension = getExtension(scriptInfo.scriptLanguage);
-                            let outputFile = config.directory + '/' + scriptName.toLowerCase() + fileExtension;
-
-                            // if the file doesn't exist then just write it out.
-                            if (!fs.existsSync(outputFile) || config.overwrite) {
-                                fs.writeFileSync(outputFile, scriptInfo.script);
-                                console.log(`Extracted ${scriptName} to ${outputFile}`);
-                            } else {
-                                console.log(`Script file ${outputFile} exists and overwriting is disabled, skipping.`);
+                if (config.type == 'screen') {
+                    let screenNames = await client.getAllScreenNames();
+                    if (typeof screenNames !== 'undefined' && screenNames.length > 0) {
+                        await asyncForEach(screenNames, async (screenName) => {
+                            if (typeof screenName !== 'undefined' && screenName) {
+                                let screenInfo = await client.getScreen(screenName);
+                                let fileExtension = '.xml';
+                                let outputFile = config.directory + '/' + screenName.toLowerCase() + fileExtension;
+                                let xml = format(screenInfo.presentation);
+                                if (!fs.existsSync(outputFile)) {
+                                    fs.writeFileSync(outputFile, xml);
+                                    console.log(`Extracted ${screenName} to ${outputFile}`);
+                                } else {
+                                    console.log(`Screen presentation file ${outputFile} exists and overwriting is disabled, skipping.`);
+                                }                                    
                             }
-                        }
-                    });
+                        });
+                    }
+                } else if (config.type == 'form') {
+                    let forms = await client.getAllForms();
+                    if (typeof forms !== 'undefined' && forms.length > 0) {
+                        await asyncForEach(forms, async (form) => {
+                            if (typeof form !== 'undefined' && form) {
+
+                                let formInfo = await client.getForm(form.id);
+                                let outputFile = config.directory + '/' + formInfo.name.toLowerCase().replaceAll(' ', '-') + '.json';
+                                let source = JSON.stringify(formInfo, null, 4);
+
+                                // if the file doesn't exist then just write it out.
+                                if (!fs.existsSync(outputFile) || config.overwrite) {
+                                    fs.writeFileSync(outputFile, source);
+                                    console.log(`Extracted ${formInfo.name} to ${outputFile}`);
+                                } else {
+                                    console.log(`Inspection form file ${outputFile} exists and overwriting is disabled, skipping.`);
+                                }
+                            }
+                        });
+                    }
                 } else {
-                    throw new Error('No scripts were found to extract.');
+                    let scriptNames = await client.getAllScriptNames();
+                    if (typeof scriptNames !== 'undefined' && scriptNames.length > 0) {
+
+                        await asyncForEach(scriptNames, async (scriptName) => {
+                            if (typeof scriptName !== 'undefined' && scriptName) {
+
+                                let scriptInfo = await client.getScript(scriptName);
+                                let fileExtension = getExtension(scriptInfo.scriptLanguage);
+                                let outputFile = config.directory + '/' + scriptName.toLowerCase() + fileExtension;
+
+                                // if the file doesn't exist then just write it out.
+                                if (!fs.existsSync(outputFile) || config.overwrite) {
+                                    fs.writeFileSync(outputFile, scriptInfo.script);
+                                    console.log(`Extracted ${scriptName} to ${outputFile}`);
+                                } else {
+                                    console.log(`Script file ${outputFile} exists and overwriting is disabled, skipping.`);
+                                }
+                            }
+                        });
+                    } else {
+                        throw new Error('No scripts were found to extract.');
+                    }
                 }
-                console.log('logged in.');
             } else {
                 console.error('Login unsuccessful, unable to login to Maximo.');
                 errorExit();
             }
         } catch (error) {
-            console.error('Error extracting scripts to maximo: ' + error);
+            console.error('Error extracting scripts from maximo: ' + error);
             errorExit();
         } finally {
             if (typeof client !== 'undefined') {

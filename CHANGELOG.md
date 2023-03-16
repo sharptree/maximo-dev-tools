@@ -1,4 +1,7 @@
 # Release Notes
+## 1.2.0
+- Updated with Form and Screen extract and publishing. Compatible with version 1.8.2 of the VS Code plugin.
+
 ## 1.1.0
 - Updated to be compatible with version 1.7.0 of the VS Code plugin.
   

@@ -41,8 +41,8 @@ export default class MaximoClient {
         // keep a reference to the config for later use.
         this.config = config;
 
-        this.requiredScriptVersion = '1.17.0';
-        this.currentScriptVersion = '1.17.0';
+        this.requiredScriptVersion = '1.20.0';
+        this.currentScriptVersion = '1.20.0';
 
         if (config.ca) {
             https.globalAgent.options.ca = config.ca;
@@ -406,7 +406,7 @@ export default class MaximoClient {
 
         const options = {
             url: 'script/sharptree.autoscript.screens',
-            params: { designmode: true },
+            params: { designmode: false },
             method: MaximoClient.Method.POST,
             headers: {
                 'Content-Type': 'text/plain',
@@ -419,6 +419,27 @@ export default class MaximoClient {
 
         return result.data;
 
+    }
+
+    async postForm(form) {
+
+        if (!this._isConnected) {
+            await this.connect();
+        }
+        
+        const options = {
+            url: 'script/sharptree.autoscript.form',
+            method: MaximoClient.Method.POST,
+            headers: {
+                'Content-Type': 'text/plain',
+                Accept: 'application/json'
+            },
+            data: JSON.stringify(form, null, 4)
+        };
+
+        const result = await this.client.request(options);
+
+        return result.data;
     }
 
     async installed() {
@@ -624,6 +645,10 @@ export default class MaximoClient {
 
         source = fs.readFileSync(path.resolve(__dirname, '../resources/sharptree.autoscript.screens.js')).toString();
         await this._installOrUpdateScript('sharptree.autoscript.screens', 'Sharptree Screens Script', source);
+
+        // eslint-disable-next-line no-undef
+        source = fs.readFileSync(path.resolve(__dirname, '../resources/sharptree.autoscript.form.js')).toString();
+        await this._installOrUpdateScript('sharptree.autoscript.form', 'Sharptree Forms Script', source);
     }
 
     // @ts-ignore
@@ -812,6 +837,46 @@ export default class MaximoClient {
         return scriptNames;
     }
 
+    async getAllScreenNames() {
+
+        const headers = new Map();
+        headers['Content-Type'] = 'application/json';
+
+        let options = {
+            url: 'script/sharptree.autoscript.screens',
+            method: MaximoClient.Method.GET,
+            headers: { common: headers },
+        };
+        // @ts-ignore
+        let response = await this.client.request(options);
+
+        if (response.data.status === 'success') {
+            return response.data.screenNames;
+        } else {
+            throw new Error(response.data.message);
+        }
+    }
+
+    async getAllForms() {
+
+        const headers = new Map();
+        headers['Content-Type'] = 'application/json';
+
+        let options = {
+            url: 'script/sharptree.autoscript.form',
+            method: MaximoClient.Method.GET,
+            headers: { common: headers },
+        };
+        // @ts-ignore
+        let response = await this.client.request(options);
+
+        if (response.data.status === 'success') {
+            return response.data.inspectionForms;
+        } else {
+            throw new Error(response.data.message);
+        }
+    }
+
     // @ts-ignore    
     // eslint-disable-next-line no-unused-vars
     async getPageData(url) {
@@ -845,6 +910,47 @@ export default class MaximoClient {
         }
     }
 
+    async getScreen(screenName) {
+
+        const headers = new Map();
+        headers['Content-Type'] = 'application/json';
+
+        let options = {
+            url: `script/sharptree.autoscript.screens/${screenName}`,
+            method: MaximoClient.Method.GET,
+            headers: { common: headers },
+        };
+
+        // @ts-ignore
+        let response = await this.client.request(options);
+
+        if (response.data.status === 'success') {
+            return response.data;
+        } else {
+            throw new Error(response.data.message);
+        }
+    }
+
+    async getForm(formId) {
+
+        const headers = new Map();
+        headers['Content-Type'] = 'application/json';
+
+        let options = {
+            url: `script/sharptree.autoscript.form/${formId}`,
+            method: MaximoClient.Method.GET,
+            headers: { common: headers },
+        };
+
+        // @ts-ignore
+        let response = await this.client.request(options);
+
+        if (response.data.status === 'success') {
+            return response.data.form;
+        } else {
+            throw new Error(response.data.message);
+        }
+    }
 
     async _initLogStreamSecurity() {
         let headers = new Map();
