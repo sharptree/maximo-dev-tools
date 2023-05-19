@@ -424,7 +424,15 @@ switch (config.command) {
                         } else if (file.endsWith('.json')) {                            
                             result = await client.postForm(JSON.parse(fileContent));
                         } else {
-                            result = await client.postScript(fileContent, file);
+                                                        
+                            let deployFileName = file.substring(0, file.lastIndexOf('.')) + '-deploy' + file.substring(file.lastIndexOf('.'));
+                            
+                            var scriptDeploy;
+                            if (fs.existsSync(deployFileName)) {
+                                scriptDeploy = fs.readFileSync(deployFileName);
+                            }
+
+                            result = await client.postScript(fileContent, file, scriptDeploy);
                         }
                         if (result) {
                             if (result.status === 'error') {
@@ -436,13 +444,14 @@ switch (config.command) {
                                     throw new Error('An unknown error occurred: ' + JSON.stringify(result));
                                 }
                             } else {
+                                
                                 if (typeof result.scriptName !== 'undefined' && result.scriptName) {
                                     deployedScripts.push(result.scriptName.toLowerCase());
                                     console.log(`Deployed ${file} as ${result.scriptName}`);
                                 } else {
                                     if (file.endsWith('.py') || file.endsWith('.js')) {
                                         noScriptName = true;
-                                        console.log(`Deployed ${file} but a script name was not returned.`);
+                                        // console.log(`Deployed ${file} but a script name was not returned.`);
                                     } else {
                                         console.log(`Deployed ${file} to Maximo.`);
                                     }
