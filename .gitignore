@@ -122,3 +122,5 @@ dist
 jd-gui.cfg
 
 *.key
+
+tmp/
