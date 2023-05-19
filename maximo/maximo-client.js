@@ -374,13 +374,28 @@ export default class MaximoClient {
         return result.data;
     }
 
-    async postScript(script, fileName) {
+    async postScript(script, fileName, deployScript) {
 
         if (!this._isConnected) {
             await this.connect();
         }
 
         let isPython = fileName.endsWith('.py');
+        
+        if (deployScript) {
+
+            const deployOptions = {
+                url: 'script/sharptree.autoscript.deploy' + (isPython ? '/python' : ''),
+                method: MaximoClient.Method.POST,
+                headers: {
+                    'Content-Type': 'text/plain',
+                    Accept: 'application/json'
+                },
+                data: deployScript
+            };
+            // @ts-ignore
+            await this.client.request(deployOptions);
+        }
 
         const options = {
             url: 'script/sharptree.autoscript.deploy' + (isPython ? '/python' : ''),
