@@ -41,8 +41,8 @@ export default class MaximoClient {
         // keep a reference to the config for later use.
         this.config = config;
 
-        this.requiredScriptVersion = '1.24.0';
-        this.currentScriptVersion = '1.24.0';
+        this.requiredScriptVersion = '1.26.0';
+        this.currentScriptVersion = '1.26.0';
 
         if (config.ca) {
             https.globalAgent.options.ca = config.ca;
@@ -373,6 +373,23 @@ export default class MaximoClient {
 
         return result.data;
     }
+    async postConfig(json){
+        if (!this._isConnected) {
+            await this.connect();
+        } 
+
+        const configOptions = {
+            url: 'script/sharptree.autoscript.deploy/config',
+            method: MaximoClient.Method.POST,
+            headers: {
+                'Content-Type': 'text/plain',
+                Accept: 'application/json'
+            },
+            data: json
+        };
+        // @ts-ignore
+        await this.client.request(configOptions);
+    }
 
     async postScript(script, fileName, deployScript) {
 
@@ -664,6 +681,10 @@ export default class MaximoClient {
         // eslint-disable-next-line no-undef
         source = fs.readFileSync(path.resolve(__dirname, '../resources/sharptree.autoscript.form.js')).toString();
         await this._installOrUpdateScript('sharptree.autoscript.form', 'Sharptree Forms Script', source);
+
+        // eslint-disable-next-line no-undef
+        source = fs.readFileSync(path.resolve(__dirname, '../resources/sharptree.autoscript.library.js')).toString();
+        await this._installOrUpdateScript('sharptree.autoscript.library', 'Sharptree Deployment Library Script', source);
     }
 
     // @ts-ignore
