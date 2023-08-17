@@ -1,4 +1,7 @@
 # Release Notes
+## 1.4.1
+- Bug fixes.
+
 ## 1.4.0
 - Add support for JSON companion objects to match VS Code extension 1.13
 
