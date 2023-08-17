@@ -1,4 +1,8 @@
 # Release Notes
+## 1.13.2
+- Aligned version number to match VS Code extension version.
+- Fixed screen integration with MAS 8.6
+
 ## 1.4.1
 - Bug fixes.
 
