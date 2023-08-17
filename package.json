@@ -1,6 +1,6 @@
 {
   "name": "maximo-dev-tools",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Tools used with the development of Maximo projects",
   "main": "index.js",
   "type": "module",
