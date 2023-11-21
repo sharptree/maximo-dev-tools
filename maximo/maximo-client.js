@@ -308,7 +308,7 @@ export default class MaximoClient {
             var oidcStateCookie = parsedCookies.filter((c) => c.key.toLowerCase().startsWith(oidcStateCookieNamePrefix.toLowerCase()));
             if (!oidcStateCookie || oidcStateCookie.length == 0) return false;
 
-            // determine the identifier for the corresponsing req url cookie name.
+            // determine the identifier for the corresponding req url cookie name.
             var stateIdentifier = oidcStateCookie[0].key.substring(oidcStateCookieNamePrefix.length);
             var oidcReqUrlCookieNamePrefix = 'WASReqURLOidc';
             var targetCookieName = oidcReqUrlCookieNamePrefix + stateIdentifier;
