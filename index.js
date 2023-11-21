@@ -447,11 +447,14 @@ switch (config.command) {
                             }
                         } else {
                             let deployFileName = file.substring(0, file.lastIndexOf(".")) + "-deploy" + file.substring(file.lastIndexOf("."));
+                            let deployDotFileName = file.substring(0, file.lastIndexOf(".")) + ".deploy" + file.substring(file.lastIndexOf("."));
                             var deployJSONFileName = file.substring(0, file.lastIndexOf(".")) + ".json";
 
                             var scriptDeploy;
                             if (fs.existsSync(deployFileName)) {
                                 scriptDeploy = fs.readFileSync(deployFileName);
+                            } else if (fs.existsSync(deployDotFileName)) {
+                                scriptDeploy = fs.readFileSync(deployDotFileName);
                             }
 
                             result = await client.postScript(fileContent, file, scriptDeploy);
