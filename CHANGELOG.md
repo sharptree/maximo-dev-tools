@@ -1,4 +1,7 @@
 # Release Notes
+## 1.13.7
+- Added fallback support for importing screens where the PresentationLoader is not available.
+  
 ## 1.13.2
 - Aligned version number to match VS Code extension version.
 - Fixed screen integration with MAS 8.6
