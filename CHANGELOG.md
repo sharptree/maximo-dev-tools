@@ -1,4 +1,7 @@
 # Release Notes
+## 1.13.9
+- Fixed deployment issues with script and launch point variables.
+  
 ## 1.13.7
 - Added fallback support for importing screens where the PresentationLoader is not available.
   
