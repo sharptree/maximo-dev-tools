@@ -1,4 +1,7 @@
 # Release Notes
+## 1.14.2
+- Added support for deploying Maximo database objects with a script.
+  
 ## 1.13.9
 - Fixed deployment issues with script and launch point variables.
   

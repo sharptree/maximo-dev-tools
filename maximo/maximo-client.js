@@ -41,8 +41,8 @@ export default class MaximoClient {
         // keep a reference to the config for later use.
         this.config = config;
 
-        this.requiredScriptVersion = '1.29.0';
-        this.currentScriptVersion = '1.29.0';
+        this.requiredScriptVersion = "1.34.0";
+        this.currentScriptVersion = "1.34.0";
 
         if (config.ca) {
             https.globalAgent.options.ca = config.ca;
@@ -373,6 +373,218 @@ export default class MaximoClient {
 
         return result.data;
     }
+    async dbConfigRequired() {
+        if (!this._isConnected) {
+            await this.connect();
+        }
+
+        const headers = new Map();
+        headers["Content-Type"] = "application/json";
+        const options = {
+            url: "script/sharptree.autoscript.admin/configdbrequired",
+            method: MaximoClient.Method.GET,
+            headers: { common: headers }
+        };
+
+        // @ts-ignore
+        const response = await this.client.request(options);
+
+        if (typeof response.data.status !== "undefined" && response.data.status === "ok") {
+            if (typeof response.data.configDBRequired !== "undefined") {
+                return response.data.configDBRequired;
+            } else {
+                return false;
+            }
+        } else {
+            throw new MaximoError("Error checking if database configuration is required: " + response.data.error);
+        }
+    }
+
+    async dbConfigRequiresAdminMode() {
+        if (!this._isConnected) {
+            await this.connect();
+        }
+
+        const headers = new Map();
+        headers["Content-Type"] = "application/json";
+        const options = {
+            url: "script/sharptree.autoscript.admin/configdbrequiresadminmode",
+            method: MaximoClient.Method.GET,
+            headers: { common: headers }
+        };
+
+        // @ts-ignore
+        const response = await this.client.request(options);
+
+        if (typeof response.data.status !== "undefined" && response.data.status === "ok") {
+            if (typeof response.data.configDBRequiresAdminMode !== "undefined") {
+                return response.data.configDBRequiresAdminMode;
+            } else {
+                return false;
+            }
+        } else {
+            throw new MaximoError("Error checking if database configuration requires admin mode: " + response.data.error);
+        }
+    }
+
+    async setAdminModeOn() {
+        if (!this._isConnected) {
+            await this.connect();
+        }
+
+        const headers = new Map();
+        headers["Content-Type"] = "application/json";
+        const options = {
+            url: "script/sharptree.autoscript.admin/adminmodeon",
+            method: MaximoClient.Method.POST,
+            headers: { common: headers }
+        };
+
+        // @ts-ignore
+        const response = await this.client.request(options);
+
+        if (typeof response.data.status !== "undefined" && response.data.status === "ok") {
+            if (typeof response.data.configDBRequiresAdminMode !== "undefined") {
+                return response.data.configDBRequiresAdminMode;
+            } else {
+                return false;
+            }
+        } else {
+            throw new MaximoError("Error setting Admin Mode On: " + response.data.error);
+        }
+    }
+
+    async setAdminModeOff() {
+        if (!this._isConnected) {
+            await this.connect();
+        }
+
+        const headers = new Map();
+        headers["Content-Type"] = "application/json";
+        const options = {
+            url: "script/sharptree.autoscript.admin/adminmodeoff",
+            method: MaximoClient.Method.POST,
+            headers: { common: headers }
+        };
+
+        // @ts-ignore
+        const response = await this.client.request(options);
+
+        if (typeof response.data.status !== "undefined" && response.data.status === "ok") {
+            if (typeof response.data.configDBRequiresAdminMode !== "undefined") {
+                return response.data.configDBRequiresAdminMode;
+            } else {
+                return false;
+            }
+        } else {
+            throw new MaximoError("Error setting Admin Mode Off: " + response.data.error);
+        }
+    }
+
+    async isAdminModeOn() {
+        if (!this._isConnected) {
+            await this.connect();
+        }
+
+        const headers = new Map();
+        headers["Content-Type"] = "application/json";
+        const options = {
+            url: "script/sharptree.autoscript.admin/adminmodeon",
+            method: MaximoClient.Method.GET,
+            headers: { common: headers }
+        };
+
+        // @ts-ignore
+        const response = await this.client.request(options);
+
+        if (typeof response.data.status !== "undefined" && response.data.status === "ok") {
+            if (typeof response.data.adminModeOn !== "undefined") {
+                return response.data.adminModeOn;
+            } else {
+                return false;
+            }
+        } else {
+            throw new MaximoError("Error checking if admin mode is on: " + response.data.error);
+        }
+    }
+
+    async dbConfigInProgress() {
+        if (!this._isConnected) {
+            await this.connect();
+        }
+
+        const headers = new Map();
+        headers["Content-Type"] = "application/json";
+        const options = {
+            url: "script/sharptree.autoscript.admin/configuring",
+            method: MaximoClient.Method.GET,
+            headers: { common: headers }
+        };
+
+        // @ts-ignore
+        const response = await this.client.request(options);
+
+        if (typeof response.data.status !== "undefined" && response.data.status === "ok") {
+            if (typeof response.data.configuring !== "undefined") {
+                return response.data.configuring;
+            } else {
+                return false;
+            }
+        } else {
+            throw new MaximoError("Error checking database configuration is in progress: " + response.data.error);
+        }
+    }
+
+    async dbConfigMessages() {
+        if (!this._isConnected) {
+            await this.connect();
+        }
+
+        const headers = new Map();
+        headers["Content-Type"] = "application/json";
+        const options = {
+            url: "script/sharptree.autoscript.admin/configmessages",
+            method: MaximoClient.Method.GET,
+            headers: { common: headers }
+        };
+
+        // @ts-ignore
+        const response = await this.client.request(options);
+
+        if (typeof response.data.status !== "undefined" && response.data.status === "ok") {
+            return response.data.messages;
+        } else {
+            throw new MaximoError("Error checking database configuration is in progress: " + response.data.error);
+        }
+    }
+
+    async applyDBConfig() {
+        if (!this._isConnected) {
+            await this.connect();
+        }
+
+        const headers = new Map();
+        headers["Content-Type"] = "application/json";
+        const options = {
+            url: "script/sharptree.autoscript.admin/applyconfigdb",
+            method: MaximoClient.Method.POST,
+            headers: { common: headers }
+        };
+
+        // @ts-ignore
+        const response = await this.client.request(options);
+
+        if (typeof response.data.status !== "undefined" && response.data.status === "ok") {
+            if (typeof response.data.configDBRequiresAdminMode !== "undefined") {
+                return response.data.configDBRequiresAdminMode;
+            } else {
+                return false;
+            }
+        } else {
+            throw new MaximoError("Error applying database configuration: " + response.data.error);
+        }
+    }
+
     async postConfig(json){
         if (!this._isConnected) {
             await this.connect();
@@ -685,6 +897,10 @@ export default class MaximoClient {
         // eslint-disable-next-line no-undef
         source = fs.readFileSync(path.resolve(__dirname, '../resources/sharptree.autoscript.library.js')).toString();
         await this._installOrUpdateScript('sharptree.autoscript.library', 'Sharptree Deployment Library Script', source);
+
+        // eslint-disable-next-line no-undef
+        source = fs.readFileSync(path.resolve(__dirname, '../resources/sharptree.autoscript.admin.js')).toString();
+        await this._installOrUpdateScript('sharptree.autoscript.admin', 'Sharptree Admin Script', source);
     }
 
     // @ts-ignore
