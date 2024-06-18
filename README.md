@@ -48,15 +48,17 @@ The `extract` command extracts scripts from the target Maximo system to a local 
 | --type                    | script                | The type of object to extract, `script`, `screen` of `form`.                                                                                                                  |
 
 ### Deploy
-The `deploy` command deploys one or more script files from the local machine to the target Maximo system.
+The `deploy` command deploys one or more script files, inspection forms or screens from the local machine to the target Maximo system.
 
-| Argument                  | Default               | Description                                                                                                                                                                   |
-| :-------------------------| :---------------------| :-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| --deleteAll               | false                 | Indicates if any script not in the current deploy directory, but on the server, will be deleted from the server. This option is may be destructive, the default is false.     |
-| --deleteList              | delete.json           | Path to a file that contains a JSON list of the scripts on the server to delete if they exist, the default is delete.json.                                                    |
-| --directory &#124; -d     | ./                    | The directory to deploy the scripts from, defaults is the current directory.                                                                                                  |
-| --file &#124; -f          |                       | The path to a single script file to deploy, if a relative path is provided it is relative to the --directory argument path.                                                   |
-| --recursive &#124; -r     | true                  | Indicates if subdirectories will be included when deploying all scripts, the default is true.                                                                                 |
+| Argument                   | Default               | Description                                                                                                                                                                   |
+| :--------------------------| :---------------------| :-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| --allowAdminMode &#124; -a | false                 | Indicates that the deployment can place the server in `Admin Mode` and perform a `Database Configuration` if required. This option may cause a system disruption.             |
+| --deleteAll                | false                 | Indicates if any script not in the current deploy directory, but on the server, will be deleted from the server. This option is may be destructive, the default is false.     |
+| --deleteList               | delete.json           | Path to a file that contains a JSON list of the scripts on the server to delete if they exist, the default is delete.json.                                                    |
+| --directory &#124; -d      | ./                    | The directory to deploy the scripts from, defaults is the current directory.                                                                                                  |
+| --file &#124; -f           |                       | The path to a single script file to deploy, if a relative path is provided it is relative to the --directory argument path.                                                   |
+| --recursive &#124; -r      | true                  | Indicates if subdirectories will be included when deploying all scripts, the default is true.                                                                                 |
+
 
 ### Log
 The `log` command streams the Maximo log to the console. This can then be piped to a file using the OS `> filename.log` command.
@@ -84,6 +86,7 @@ A sample settings JSON file is provided below with the default values.
     "username": undefined,
     "install": true,
     "deploy": {
+        "allowAdminMode": false,
         "file": undefined,
         "recursive": true,
         "directory": './',

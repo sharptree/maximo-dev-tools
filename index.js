@@ -16,7 +16,7 @@ import MaximoClient from "./maximo/maximo-client.js";
 import format from "xml-formatter";
 
 const yarg = yargs(hideBin(process.argv));
-const supportedVersions = ["7608", "7609", "76010", "76011", "7610", "7611", "7612", "7613", "8300", "8400", "8500", "8600"];
+const supportedVersions = ["7608", "7609", "76010", "76011", "7610", "7611", "7612", "7613", "8300", "8400", "8500", "8600", "8700"];
 var installOrUpgrade = true;
 
 // Command line options
@@ -25,35 +25,39 @@ const deploy = {
     desc: "Deploy a single script, screen or inspection form definition or all the scripts, screens or inspection form definitions in a directory.",
     builder: (yargs) =>
         yargs
+            .option("allowAdminMode", {
+                desc: "Indicates that the deployment can place the server in Admin Mode and perform a Database Configuration if required. This option may cause a system disruption, the default is false.",
+                type: "boolean"
+            })
             .option("deleteAll", {
                 desc: "Indicates if any script not in the current deploy directory, but on the server, will be deleted from the server. This option is may be destructive, the default is false. (Does not apply to screens or inspection forms)",
-                type: "boolean",
+                type: "boolean"
             })
             .option("deleteList", {
                 desc: "Path to a file that contains a JSON list of the scripts on the server to delete if they exist, the default is delete.json. (Does not apply to screens or inspection forms)",
-                type: "boolean",
+                type: "boolean"
             })
             .option("directory", {
                 desc: "The directory containing the scripts, screen or inspection form definitions to deploy.",
                 type: "string",
                 alias: "d",
-                global: false,
+                global: false
             })
             .option("file", {
                 desc: "The path to a single script, screen or inspection form definition file to deploy, if a relative path is provided it is relative to the --directory argument path.",
                 type: "string",
                 alias: "f",
-                global: false,
+                global: false
             })
             .option("recursive", {
                 desc: "Indicates if subdirectories will be included when deploying all scripts, screen or inspection form definitions, the default is true.",
                 type: "boolean",
-                alias: "r",
-            }),
+                alias: "r"
+            })
 };
 const encrypt = {
     command: "encrypt",
-    desc: "Encrypt the settings password.",
+    desc: "Encrypt the settings password."
 };
 const extract = {
     command: "extract",
@@ -64,19 +68,19 @@ const extract = {
                 desc: "The directory to extract the scripts, screens or inspection forms to, defaults is the current directory.",
                 type: "string",
                 alias: "d",
-                global: false,
+                global: false
             })
             .option("overwrite", {
                 desc: "Overwrite existing files if different from the server, default is true.",
                 type: "boolean",
                 alias: "o",
-                global: false,
+                global: false
             })
             .option("type", {
                 desc: 'The type of object to extract, "script", "screen" of "form". Defaults to "script".',
                 type: "string",
-                global: false,
-            }),
+                global: false
+            })
 };
 const streamLog = {
     command: "log",
@@ -84,78 +88,78 @@ const streamLog = {
     builder: (yargs) =>
         yargs.option("log-timeout", {
             desc: "Number of seconds between logging requests, the default is 30.",
-            type: "number",
-        }),
+            type: "number"
+        })
 };
 
 const argv = yarg
     .usage("Usage: $0 <command> [options]")
     .option("allow-untrusted-certs", {
         desc: "Allow untrusted SSL certificates.",
-        type: "boolean",
+        type: "boolean"
     })
     .option("apikey", {
         desc: "The Maximo API key that will be used to access Maximo. If provided, the user name and password are ignored if configured.",
         type: "string",
-        alias: "a",
+        alias: "a"
     })
     .option("ca", {
         desc: "Path to the Maximo server certificate authority (CA) if it is not part of the system CA chain.",
-        type: "string",
+        type: "string"
     })
     .option("context", {
         desc: "The part of the URL that follows the hostname, default is maximo.",
         type: "string",
-        alias: "c",
+        alias: "c"
     })
     .option("host", {
         desc: "The Maximo host name or IP address *without* the http/s protocol prefix. .",
         type: "string",
-        alias: "h",
+        alias: "h"
     })
     .option("install", {
         desc: "Indicates if the utility scripts should install and upgrade automatically, default is true.",
         type: "boolean",
-        alias: "i",
+        alias: "i"
     })
     .option("key", {
         desc: "The path to the encryption key for the settings encrypted values. A relative path is relative to the settings.json file directory.",
         type: "string",
-        alias: "k",
+        alias: "k"
     })
     .option("maxauth", {
         desc: "Force native Maximo authentication, default is false.",
-        type: "boolean",
+        type: "boolean"
     })
     .option("password", {
         desc: "The Maximo user password.",
         type: "string",
-        alias: "passwd",
+        alias: "passwd"
     })
     .option("port", {
         desc: "The Maximo server port, defaults to 80 if the --ssl argument is false, 443 if the --ssl argument is true.",
         type: "number",
-        alias: "p",
+        alias: "p"
     })
     .option("settings", {
         desc: "The path to the settings file, default is settings.json.",
         type: "string",
         alias: "s",
-        default: "./settings.json",
+        default: "./settings.json"
     })
     .option("ssl", {
         desc: "Indicates if SSL will be used, defaults to true.",
-        type: "boolean",
+        type: "boolean"
     })
     .option("timeout", {
         desc: "The connection timeout in seconds, default is 30 seconds.",
         type: "number",
-        alias: "t",
+        alias: "t"
     })
     .option("username", {
         desc: "The Maximo user name.",
         type: "string",
-        alias: "u",
+        alias: "u"
     })
     .command(encrypt)
     .command(extract)
@@ -187,20 +191,21 @@ class Configuration {
             username: undefined,
             install: true,
             deploy: {
+                allowAdminMode: false,
                 file: undefined,
                 recursive: true,
                 directory: "./",
                 deleteAll: false,
-                deleteList: "delete.json",
+                deleteList: "delete.json"
             },
             log: {
-                timeout: 30,
+                timeout: 30
             },
             extract: {
                 directory: "./",
                 overwrite: true,
-                type: "script",
-            },
+                type: "script"
+            }
         };
         if (args.settings) {
             if (fs.existsSync(args.settings)) {
@@ -246,6 +251,7 @@ class Configuration {
                 this.recursive = this.__selectCLIIfDefined(args.recursive, settings.deploy.recursive);
                 this.directory = this.__selectCLIIfDefined(args.directory, settings.deploy.directory);
                 this.deleteAll = this.__selectCLIIfDefined(args.deleteAll, settings.deploy.deleteAll);
+                this.allowAdminMode = this.__selectCLIIfDefined(args.allowAdminMode, settings.deploy.allowAdminMode);
                 this.deleteList = this.__selectCLIIfDefined(args.deleteList, settings.deploy.deleteList);
                 break;
             case "log":
@@ -439,25 +445,129 @@ switch (config.command) {
                         let result;
                         if (file.endsWith(".xml")) {
                             result = await client.postScreen(fileContent);
-                        } else if (file.endsWith(".json")) {
-                            var deployJavaScriptFileName = file.substring(0, file.lastIndexOf(".")) + ".js";
-                            var deployPythonFileName = file.substring(0, file.lastIndexOf(".")) + ".js";
-                            if (!fs.existsSync(deployJavaScriptFileName) && !fs.existsSync(deployPythonFileName)) {
-                                result = await client.postForm(JSON.parse(fileContent));
-                            }
-                        } else {
+                        } else if (
+                            (file.endsWith(".js") || file.endsWith(".py")) &&
+                            !file.endsWith(".deploy" + file.substring(file.lastIndexOf("."))) &&
+                            !file.endsWith("-deploy" + file.substring(file.lastIndexOf(".")))
+                        ) {
                             let deployFileName = file.substring(0, file.lastIndexOf(".")) + "-deploy" + file.substring(file.lastIndexOf("."));
                             let deployDotFileName = file.substring(0, file.lastIndexOf(".")) + ".deploy" + file.substring(file.lastIndexOf("."));
                             var deployJSONFileName = file.substring(0, file.lastIndexOf(".")) + ".json";
+                            let preDeployJSONFileName = file.substring(0, file.lastIndexOf(".")) + ".predeploy.json";
 
                             var scriptDeploy;
+
                             if (fs.existsSync(deployFileName)) {
                                 scriptDeploy = fs.readFileSync(deployFileName);
                             } else if (fs.existsSync(deployDotFileName)) {
                                 scriptDeploy = fs.readFileSync(deployDotFileName);
                             }
 
+                            if (fs.existsSync(preDeployJSONFileName)) {
+                                let preConfigDeploy = fs.readFileSync(preDeployJSONFileName, "utf8");
+
+                                console.log(`Applying pre-deploy configuration file ${preDeployJSONFileName}`);
+                                await client.postConfig(preConfigDeploy);
+
+                                const preDeployConfig = JSON.parse(preConfigDeploy);
+                                if (
+                                    typeof preDeployConfig.maxObjects !== "undefined" &&
+                                    Array.isArray(preDeployConfig.maxObjects) &&
+                                    preDeployConfig.maxObjects.length > 0
+                                ) {
+                                    if (typeof preDeployConfig.noDBConfig === "undefined" || preDeployConfig.noDBConfig === false) {
+                                        if (await client.dbConfigRequired()) {
+                                            console.log(`Checking if Admin Mode is required to apply changes to the database.`);
+                                            const adminModeRequired = await client.dbConfigRequiresAdminMode();
+                                            if (adminModeRequired) {
+                                                console.log(`Admin Mode is required to apply changes to the database.`);
+                                                if (config.allowAdminMode) {
+                                                    if (typeof preDeployConfig.noAdminMode === "undefined" || preDeployConfig.noAdminMode === false) {
+                                                        console.log("Requesting Admin Mode On");
+                                                        await client.setAdminModeOn();
+                                                        await new Promise((resolve) => setTimeout(resolve, 2000));
+                                                        console.log(`Requested Admin Mode On`);
+                                                        //put the server in admin mode, then do the config.
+                                                        while ((await client.isAdminModeOn()) === false) {
+                                                            await new Promise((resolve) => setTimeout(resolve, 2000));
+                                                            console.log(`Waiting for Admin Mode On`);
+                                                        }
+                                                        console.log(`Admin Mode is On, applying database configurations.`);
+                                                        await client.applyDBConfig();
+                                                        console.log(`Requested database configuration start`);
+
+                                                        // wait for the server to respond that the db config is in progress
+                                                        while ((await client.dbConfigInProgress()) === false) {
+                                                            await new Promise((resolve) => setTimeout(resolve, 2000));
+                                                        }
+
+                                                        // wait for the database configuration to complete
+                                                        const regex = /BMX.*?E(?= -)/;
+                                                        while ((await client.dbConfigInProgress()) === true) {
+                                                            await new Promise((resolve) => setTimeout(resolve, 2000));
+
+                                                            var messages = await client.dbConfigMessages();
+                                                            if (messages.length > 0) {
+                                                                var messageList = messages.split("\n");
+                                                                messageList.forEach((message) => {
+                                                                    if (regex.test(message) || messages.startsWith("BMXAA6819I")) {
+                                                                        throw new Error("An error occurred during database configuration: " + message);
+                                                                    }
+                                                                });
+                                                                console.log(messageList[messageList.length - 1]);
+                                                            } else {
+                                                                console.log(`Waiting for database configuration to complete`);
+                                                            }
+                                                        }
+                                                        console.log(`Database configuration is complete`);
+                                                        console.log(`Requesting Admin Mode Off`);
+                                                        await client.setAdminModeOff();
+                                                        await new Promise((resolve) => setTimeout(resolve, 2000));
+                                                        console.log(`Requested Admin Mode Off`);
+
+                                                        while ((await client.isAdminModeOn()) === true) {
+                                                            await new Promise((resolve) => setTimeout(resolve, 2000));
+                                                            console.log(`Waiting for Admin Mode Off`);
+                                                        }
+                                                        await new Promise((resolve) => setTimeout(resolve, 2000));
+                                                        console.log(`Admin Mode is Off`);
+                                                    } else {
+                                                        throw new Error(
+                                                            "The script deployment specifies that Admin Mode should not be applied, but the script cannot be deployed until the database configurations have been applied.\nThe configurations have been added to Maximo and can be manually applied by an administrator."
+                                                        );
+                                                    }
+                                                } else {
+                                                    throw new Error(
+                                                        "The command line parameter allowAdminMode is false, but the script cannot be deployed until the database configurations have been applied.\nThe configurations have been added to Maximo and can be manually applied by an administrator."
+                                                    );
+                                                }
+                                            } else {
+                                                console.log(`Admin Mode is not required to apply changes to the database.`);
+                                                // just do the config.
+                                                await client.applyDBConfig();
+                                                console.log(`Requested database configuration start`);
+                                                await new Promise((resolve) => setTimeout(resolve, 2000));
+                                                while ((await client.dbConfigInProgress()) === true) {
+                                                    await new Promise((resolve) => setTimeout(resolve, 2000));
+                                                    console.log(`Database configuration is complete`);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
                             result = await client.postScript(fileContent, file, scriptDeploy);
+                        } else if (file.endsWith(".json") && !file.endsWith("-predeploy.json") && !file.endsWith(".predeploy.json")) {
+                            var deployJavaScriptFileName = file.substring(0, file.lastIndexOf(".")) + ".js";
+                            var deployPythonFileName = file.substring(0, file.lastIndexOf(".")) + ".js";
+                            if (!fs.existsSync(deployJavaScriptFileName) && !fs.existsSync(deployPythonFileName)) {
+                                result = await client.postForm(JSON.parse(fileContent));
+                            }
+                        } else {
+                            result = {
+                                "status": "ignored"
+                            };
                         }
                         if (result) {
                             if (result.status === "error") {
@@ -468,7 +578,7 @@ switch (config.command) {
                                 } else {
                                     throw new Error("An unknown error occurred: " + JSON.stringify(result));
                                 }
-                            } else {
+                            } else if (result.status !== "ignored") {
                                 if (fs.existsSync(deployJSONFileName)) {
                                     let configDeploy = fs.readFileSync(deployJSONFileName);
                                     await client.postConfig(configDeploy);
@@ -476,11 +586,11 @@ switch (config.command) {
 
                                 if (typeof result.scriptName !== "undefined" && result.scriptName) {
                                     deployedScripts.push(result.scriptName.toLowerCase());
-                                    console.log(`Deployed ${file} as ${result.scriptName}`);
+                                    console.log(`Deployed ${file} as ${result.scriptName} to Maximo.`);
                                 } else {
                                     if (file.endsWith(".py") || file.endsWith(".js")) {
                                         noScriptName = true;
-                                        // console.log(`Deployed ${file} but a script name was not returned.`);
+                                        console.log(`Deployed ${file} but a script name was not returned.`);
                                     } else {
                                         console.log(`Deployed ${file} to Maximo.`);
                                     }
@@ -493,7 +603,7 @@ switch (config.command) {
                         if (error && error.message) {
                             console.error(error.message);
                         } else {
-                            console.error(error.message);
+                            console.error(error);
                         }
                     }
                 };
@@ -779,7 +889,7 @@ function getMaximoConfig(config) {
         ca: config.ca,
         maxauthOnly: config.maxauth,
         apiKey: config.apikey,
-        extractLocation: config.extract && config.extract.directory ? config.extract.directory : undefined,
+        extractLocation: config.extract && config.extract.directory ? config.extract.directory : undefined
     });
 }
 
