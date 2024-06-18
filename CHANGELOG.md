@@ -1,4 +1,7 @@
 # Release Notes
+## 1.14.3
+- Updated security to ensure only users with SHARPTREE_UTILS : DEPLOYSCRIPT can perform deploy actions.
+  
 ## 1.14.2
 - Added support for deploying Maximo database objects with a script.
   
