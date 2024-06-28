@@ -45,7 +45,7 @@ The `extract` command extracts scripts from the target Maximo system to a local 
 | :-------------------------| :---------------------| :-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | --directory &#124; -d     | ./                    | The directory to extract the scripts to, defaults is the current directory.                                                                                                   |
 | --overwrite &#124; -o     | true                  | Overwrite existing files if different from the server, default is true.                                                                                                       |
-| --type                    | script                | The type of object to extract, `script`, `screen` of `form`.                                                                                                                  |
+| --type                    | script                | The type of object to extract, `form`, `report`, `screen` or `script`.                                                                                                                  |
 
 ### Deploy
 The `deploy` command deploys one or more script files, inspection forms or screens from the local machine to the target Maximo system.

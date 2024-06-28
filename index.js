@@ -14,9 +14,13 @@ import { homedir } from "os";
 import MaximoConfig from "./maximo/maximo-config.js";
 import MaximoClient from "./maximo/maximo-client.js";
 import format from "xml-formatter";
+import { parseString, Builder } from "xml2js";
+import * as yauzl from "yauzl";
+import archiver from "archiver";
+import { PassThrough } from "stream";
 
 const yarg = yargs(hideBin(process.argv));
-const supportedVersions = ["7608", "7609", "76010", "76011", "7610", "7611", "7612", "7613", "8300", "8400", "8500", "8600", "8700"];
+
 var installOrUpgrade = true;
 
 // Command line options
@@ -38,13 +42,13 @@ const deploy = {
                 type: "boolean"
             })
             .option("directory", {
-                desc: "The directory containing the scripts, screen or inspection form definitions to deploy.",
+                desc: "The directory containing the script, screen, report or inspection form definitions to deploy.",
                 type: "string",
                 alias: "d",
                 global: false
             })
             .option("file", {
-                desc: "The path to a single script, screen or inspection form definition file to deploy, if a relative path is provided it is relative to the --directory argument path.",
+                desc: "The path to a single script, screen, report or inspection form definition file to deploy, if a relative path is provided it is relative to the --directory argument path.",
                 type: "string",
                 alias: "f",
                 global: false
@@ -77,7 +81,7 @@ const extract = {
                 global: false
             })
             .option("type", {
-                desc: 'The type of object to extract, "script", "screen" of "form". Defaults to "script".',
+                desc: 'The type of object to extract,"form", "report", "screen" or "script". Defaults to "script".',
                 type: "string",
                 global: false
             })
@@ -171,6 +175,18 @@ const argv = yarg
         'Either the "encrypt", "extract", "deploy", or "log" command must be provided.',
         'Only one command can be provided, either "encrypt", "extract", "deploy", or "log".'
     )
+    .fail((msg, err, yargs) => {
+        if (msg == "Unknown argument: l") {
+            console.error(msg + ", Did you use -ssl instead of --ssl?");
+            errorExit();
+        } else if (err) {
+            console.error(err.message);
+            errorExit();
+        } else {
+            console.error(msg);            
+            errorExit();
+        }
+    })
     .help()
     .strict().argv;
 
@@ -346,8 +362,14 @@ class Configuration {
                             throw new Error(`The provided script file ${file} does not exist.`);
                         }
 
-                        if (!file.endsWith(".py") && !file.endsWith(".js") && !file.endsWith(".xml") && !file.endsWith(".json")) {
-                            throw new Error(`Only .js, .py, xml or json files can be deployed. The file ${file} does not meet this requirement.`);
+                        if (
+                            !file.endsWith(".py") &&
+                            !file.endsWith(".js") &&
+                            !file.endsWith(".xml") &&
+                            !file.endsWith(".json") &&
+                            !file.endsWith(".rptdesign")
+                        ) {
+                            throw new Error(`Only .js, json, .py, .rptdesign or xml files can be deployed. The file ${file} does not meet this requirement.`);
                         }
                     }
 
@@ -444,7 +466,10 @@ switch (config.command) {
                         let fileContent = fs.readFileSync(file, "utf8");
                         let result;
                         if (file.endsWith(".xml")) {
-                            result = await client.postScreen(fileContent);
+                            // ignore reports.xml as they are report files
+                            if (!file.endsWith("reports.xml")) {
+                                result = await client.postScreen(fileContent);
+                            }
                         } else if (
                             (file.endsWith(".js") || file.endsWith(".py")) &&
                             !file.endsWith(".deploy" + file.substring(file.lastIndexOf("."))) &&
@@ -560,10 +585,113 @@ switch (config.command) {
                             result = await client.postScript(fileContent, file, scriptDeploy);
                         } else if (file.endsWith(".json") && !file.endsWith("-predeploy.json") && !file.endsWith(".predeploy.json")) {
                             var deployJavaScriptFileName = file.substring(0, file.lastIndexOf(".")) + ".js";
-                            var deployPythonFileName = file.substring(0, file.lastIndexOf(".")) + ".js";
+                            var deployPythonFileName = file.substring(0, file.lastIndexOf(".")) + ".py";
                             if (!fs.existsSync(deployJavaScriptFileName) && !fs.existsSync(deployPythonFileName)) {
                                 result = await client.postForm(JSON.parse(fileContent));
                             }
+                        } else if (file.endsWith(".rptdesign")) {
+                            let reportContent = fs.readFileSync(file, "utf8");
+                            let fileName = path.basename(file);
+                            let reportName = path.basename(file, path.extname(file));
+
+                            let folderPath = path.dirname(file);
+
+                            // Get the name of the containing folder
+                            let appName = path.basename(folderPath);
+
+                            let reportsXML = folderPath + "/reports.xml";
+
+                            if (!fs.existsSync(reportsXML)) {
+                                console.error("The selected report must have a reports.xml in the same folder that describes the report parameters.");
+                                return;
+                            }
+
+                            // Read the XML file
+                            let xmlContent = fs.readFileSync(reportsXML, "utf8");
+
+                            let reportConfigs = await new Promise((resolve, reject) => {
+                                parseString(xmlContent, function (error, result) {
+                                    if (error) {
+                                        reject(error);
+                                    } else {
+                                        resolve(result);
+                                    }
+                                });
+                            });
+
+                            let reportConfig = reportConfigs.reports.report.filter((report) => report.$.name === fileName)[0];
+
+                            if (typeof reportConfig === "undefined" || reportConfig === null || reportConfig.attribute.length === 0) {
+                                console.error("The selected report does not have an entry that contains at least one attribute value in the reports.xml.");
+                                return;
+                            }
+
+                            let resourceData = null;
+                            let resourceFolder = folderPath + "/" + reportName;
+                            if (fs.existsSync(resourceFolder) && fs.readdirSync(resourceFolder).length > 0) {
+                                resourceData = await createZipFromFolder(resourceFolder);
+                            }
+
+                            let attributes = reportConfig.attribute;
+
+                            let reportData = {
+                                reportName: reportConfig.$.name,
+                                description: attributes.find((attr) => attr.$.name === "description")?._ ?? null,
+                                reportFolder: attributes.find((attr) => attr.$.name === "reportfolder")?._ ?? null,
+                                appName: appName,
+                                toolbarLocation: attributes.find((attr) => attr.$.name === "toolbarlocation")?._ ?? "NONE",
+                                toolbarIcon: attributes.find((attr) => attr.$.name === "toolbaricon")?._ ?? null,
+                                toolbarSequence: attributes.find((attr) => attr.$.name === "toolbarsequence")?._ ?? null,
+                                noRequestPage: attributes.find((attr) => attr.$.name === "norequestpage")?._ == 1 ? true : false ?? false,
+                                detail: attributes.find((attr) => attr.$.name === "detail")?._ == 1 ? true : false ?? false,
+                                useWhereWithParam: attributes.find((attr) => attr.$.name === "usewherewithparam")?._ == 1 ? true : false ?? false,
+                                langCode: attributes.find((attr) => attr.$.name === "langcode")?._ ?? null,
+                                recordLimit: attributes.find((attr) => attr.$.name === "recordlimit")?._ ?? null,
+                                browserView: attributes.find((attr) => attr.$.name === "ql")?._ == 1 ? true : false ?? false,
+                                directPrint: attributes.find((attr) => attr.$.name === "dp")?._ == 1 ? true : false ?? false,
+                                printWithAttachments: attributes.find((attr) => attr.$.name === "pad")?._ == 1 ? true : false ?? false,
+                                browserViewLocation: attributes.find((attr) => attr.$.name === "qlloc")?._ ?? "NONE",
+                                directPrintLocation: attributes.find((attr) => attr.$.name === "dploc")?._ ?? "NONE",
+                                printWithAttachmentsLocation: attributes.find((attr) => attr.$.name === "padloc")?._ ?? "NONE",
+                                priority: attributes.find((attr) => attr.$.name === "priority")?._ ?? null,
+                                scheduleOnly: attributes.find((attr) => attr.$.name === "scheduleonly")?._ == 1 ? true : false ?? false,
+                                displayOrder: attributes.find((attr) => attr.$.name === "displayorder")?._ ?? null,
+                                paramColumns: attributes.find((attr) => attr.$.name === "paramcolumns")?._ ?? null,
+                                design: reportContent,
+                                resources: resourceData
+                            };
+
+                            if (
+                                typeof reportConfig.parameters !== "undefined" &&
+                                reportConfig.parameters.length == 1 &&
+                                typeof reportConfig.parameters[0].parameter !== "undefined" &&
+                                reportConfig.parameters[0].parameter.length > 0
+                            ) {
+                                let parameters = reportConfig.parameters[0].parameter;
+                                reportData.parameters = [];
+                                parameters.forEach((parameter) => {
+                                    let attributes = parameter.attribute;
+
+                                    reportData.parameters.push({
+                                        parameterName: parameter.$.name,
+                                        attributeName: attributes.find((attr) => attr.$.name === "attributename")?._ ?? null,
+                                        defaultValue: attributes.find((attr) => attr.$.name === "defaultvalue")?._ ?? null,
+                                        labelOverride: attributes.find((attr) => attr.$.name === "labeloverride")?._ ?? null,
+                                        sequence: attributes.find((attr) => attr.$.name === "sequence")?._ ?? null,
+                                        lookupName: attributes.find((attr) => attr.$.name === "lookupname")?._ ?? null,
+                                        required: attributes.find((attr) => attr.$.name === "required")?._ == 1 ? true : false ?? false,
+                                        hidden: attributes.find((attr) => attr.$.name === "hidden")?._ == 1 ? true : false ?? false,
+                                        multiLookup: attributes.find((attr) => attr.$.name === "multilookup")?._ == 1 ? true : false ?? false,
+                                        operator: attributes.find((attr) => attr.$.name === "operator")?._ ?? null
+                                    });
+                                });
+                            }
+
+                            console.log(`Deploying report ${fileName}`);
+
+                            await new Promise((resolve) => setTimeout(resolve, 500));
+
+                            result = await client.postReport(reportData);
                         } else {
                             result = {
                                 "status": "ignored"
@@ -591,6 +719,8 @@ switch (config.command) {
                                     if (file.endsWith(".py") || file.endsWith(".js")) {
                                         noScriptName = true;
                                         console.log(`Deployed ${file} but a script name was not returned.`);
+                                    } else if (file.endsWith(".rptdesign")) {
+                                        console.log(`Deployed report ${path.basename(file)} to Maximo.`);
                                     } else {
                                         console.log(`Deployed ${file} to Maximo.`);
                                     }
@@ -618,7 +748,13 @@ switch (config.command) {
                                 await deployDir(path.resolve(directory, file.name), deployFile);
                             } else {
                                 if (!file.isDirectory()) {
-                                    if (file.name.endsWith(".js") || file.name.endsWith(".py") || file.name.endsWith(".xml") || file.name.endsWith(".json")) {
+                                    if (
+                                        file.name.endsWith(".js") ||
+                                        file.name.endsWith(".py") ||
+                                        file.name.endsWith(".xml") ||
+                                        file.name.endsWith(".rptdesign") ||
+                                        file.name.endsWith(".json")
+                                    ) {
                                         try {
                                             await deployFile(path.resolve(directory, file.name));
                                         } catch (error) {
@@ -692,6 +828,52 @@ switch (config.command) {
                             }
                         });
                     }
+                } else if (config.type == "report") {
+                    let reportNames = await client.getAllReports();
+                    if (typeof reportNames !== "undefined" && reportNames.length > 0) {
+                        let mappedReportNames = reportNames.map((report) => {
+                            return report.description + " (" + report.report + ")";
+                        });
+
+                        await asyncForEach(mappedReportNames, async (reportName) => {
+                            var report = reportNames.find((x) => x.description + " (" + x.report + ")" == reportName);
+                            let reportInfo;
+                            try {
+                                reportInfo = await client.getReport(report.reportId);
+                            } catch (error) {
+                                if (!error.message && error.message.includes("BMXAA5476E")) {
+                                    throw error;
+                                } else {
+                                    console.log(`Report ${reportName} does not have a report design in Maximo and will be skipped.`);
+                                }
+                            }
+                            if (reportInfo) {
+                                let outputFile = config.directory + "/" + reportInfo.reportFolder + "/" + report.report;
+                                if (reportInfo.design) {
+                                    let xml = reportInfo.design;
+
+                                    // if the file doesn't exist then just write it out.
+                                    if (!fs.existsSync(outputFile)) {
+                                        fs.mkdirSync(config.directory + "/" + reportInfo.reportFolder, { recursive: true });
+                                        fs.writeFileSync(outputFile, xml);
+                                        console.log(`Extracted ${reportName}`);
+                                    } else {
+                                        let incomingHash = crypto.createHash("sha256").update(xml).digest("hex");
+                                        let fileHash = crypto.createHash("sha256").update(fs.readFileSync(outputFile)).digest("hex");
+
+                                        if (fileHash !== incomingHash || config.overwrite) {
+                                            fs.writeFileSync(outputFile, xml);
+                                            console.log(`Extracted ${reportName}`);
+                                        } else {
+                                            console.log(`Report ${reportName} exists and overwriting is disabled, skipping.`);
+                                        }
+                                    }
+                                    await writeResources(reportInfo, config.directory);
+                                    await writeMetaData(reportInfo, config.directory);
+                                }
+                            }
+                        });
+                    }
                 } else if (config.type == "form") {
                     let forms = await client.getAllForms();
                     if (typeof forms !== "undefined" && forms.length > 0) {
@@ -738,7 +920,7 @@ switch (config.command) {
                 errorExit();
             }
         } catch (error) {
-            console.error("Error extracting scripts from maximo: " + error);
+            console.error("Error extracting " + config.type + " from maximo: " + error);
             errorExit();
         } finally {
             if (typeof client !== "undefined") {
@@ -813,10 +995,6 @@ async function login(client) {
     );
 
     if (logInSuccessful) {
-        logInSuccessful = await versionSupported(client);
-    }
-
-    if (logInSuccessful) {
         if ((await installed(client)) && (await upgraded(client))) {
             return true;
         } else {
@@ -825,20 +1003,6 @@ async function login(client) {
     } else {
         return false;
     }
-}
-
-async function versionSupported(client) {
-    var version = await client.maximoVersion();
-
-    if (!version) {
-        throw new Error("Could not determine the Maximo version. Only Maximo 7.6.0.8 and greater are supported");
-    } else {
-        var checkVersion = version.substr(1, version.indexOf("-") - 1);
-        if (!supportedVersions.includes(checkVersion)) {
-            throw new Error(`The Maximo version ${version} is not supported.`);
-        }
-    }
-    return true;
 }
 
 async function installed(client) {
@@ -986,6 +1150,200 @@ function getExtension(scriptLanguage) {
         default:
             return ".unknown";
     }
+}
+
+async function writeMetaData(reportInfo, extractLoc) {
+    let xmlFilePath = extractLoc + "/" + reportInfo.reportFolder + "/reports.xml";
+
+    let reportsXML = await new Promise((resolve, reject) => {
+        if (fs.existsSync(xmlFilePath)) {
+            const xml = fs.readFileSync(xmlFilePath, "utf-8");
+            parseString(xml, (err, result) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                resolve(result);
+            });
+        } else {
+            // Initialize xmlObject with a reports element
+            resolve({ reports: {} });
+        }
+    });
+
+    if (!reportsXML) {
+        reportsXML = {};
+    }
+
+    if (typeof reportsXML.reports === "undefined" || !reportsXML.reports) {
+        reportsXML.reports = {};
+    }
+
+    if (typeof reportsXML.reports.report === "undefined" || !reportsXML.reports.report) {
+        reportsXML.reports.report = [];
+    }
+
+    reportsXML.reports.report = reportsXML.reports.report.filter((report) => {
+        // Assuming each report has an $ object with an id attribute
+        // Keep the report if its id is not the one we want to remove
+        return !(report.$ && report.$.name === reportInfo.reportName);
+    });
+
+    let report = { $: { name: reportInfo.reportName } };
+    report.attribute = [];
+    report.attribute.push({ _: reportInfo.reportName, $: { name: "filename" } });
+    report.attribute.push({ _: reportInfo.description, $: { name: "description" } });
+    report.attribute.push({ _: reportInfo.directPrintLocation, $: { name: "dploc" } });
+    report.attribute.push({ _: reportInfo.directPrint, $: { name: "dp" } });
+    report.attribute.push({ _: reportInfo.browserViewLocation, $: { name: "qlloc" } });
+    report.attribute.push({ _: reportInfo.browserView, $: { name: "ql" } });
+    report.attribute.push({ _: reportInfo.printWithAttachmentsLocation, $: { name: "padloc" } });
+    report.attribute.push({ _: reportInfo.printWithAttachments, $: { name: "pad" } });
+    if (reportInfo.toolbarSequence) report.attribute.push({ _: reportInfo.toolbarSequence, $: { name: "toolbarsequence" } });
+    report.attribute.push({ _: reportInfo.noRequestPage ? 1 : 0, $: { name: "norequestpage" } });
+    report.attribute.push({ _: reportInfo.detail ? 1 : 0, $: { name: "detail" } });
+    if (reportInfo.recordLimit) report.attribute.push({ _: reportInfo.recordLimit, $: { name: "recordlimit" } });
+    report.attribute.push({ _: reportInfo.reportFolder, $: { name: "reportfolder" } });
+    if (reportInfo.priority) report.attribute.push({ _: reportInfo.priority, $: { name: "priority" } });
+    report.attribute.push({ _: reportInfo.scheduleOnly ? 1 : 0, $: { name: "scheduleonly" } });
+    report.attribute.push({ _: reportInfo.toolbarLocation, $: { name: "toolbarlocation" } });
+    report.attribute.push({ _: reportInfo.useWhereWithParam ? 1 : 0, $: { name: "usewherewithparam" } });
+    report.attribute.push({ _: reportInfo.displayOrder ? 1 : 0, $: { name: "displayOrder" } });
+    report.attribute.push({ _: reportInfo.paramColumns ? 1 : 0, $: { name: "paramcolumns" } });
+
+    if (reportInfo.parameters.length > 0) {
+        report.parameters = {};
+        report.parameters.parameter = [];
+        reportInfo.parameters.forEach((param) => {
+            let parameter = { $: { name: param.parameterName } };
+            parameter.attribute = [];
+            parameter.attribute.push({ _: param.attributeName, $: { name: "attributename" } });
+            parameter.attribute.push({ _: param.defaultValue, $: { name: "defaultvalue" } });
+            parameter.attribute.push({ _: param.labelOverride, $: { name: "labeloverride" } });
+            parameter.attribute.push({ _: param.lookupName, $: { name: "lookupname" } });
+            parameter.attribute.push({ _: param.hidden ? 1 : 0, $: { name: "hidden" } });
+            parameter.attribute.push({ _: param.lookup ? 1 : 0, $: { name: "lookup" } });
+            parameter.attribute.push({ _: param.operator, $: { name: "operator" } });
+            parameter.attribute.push({ _: param.multiLookup, $: { name: "multilookup" } });
+            parameter.attribute.push({ _: param.hidden ? 1 : 0, $: { name: "hidden" } });
+            parameter.attribute.push({ _: param.required ? 1 : 0, $: { name: "required" } });
+            parameter.attribute.push({ _: param.sequence, $: { name: "sequence" } });
+            report.parameters.parameter.push(parameter);
+        });
+    }
+    if (reportInfo.resources) {
+        const reportName = path.basename(reportInfo.reportName, path.extname(reportInfo.reportName));
+
+        let outputDir = extractLoc + "/" + reportInfo.reportFolder + "/" + reportName;
+        report.resources = {};
+        report.resources.resource = [];
+        if (fs.existsSync(outputDir)) {
+            const files = fs.readdirSync(outputDir);
+            files.forEach((file) => {
+                let resource = {};
+                resource.reference = { _: path.basename(file) };
+                resource.filename = "./" + reportName + "/" + path.basename(file);
+                report.resources.resource.push(resource);
+            });
+        }
+    }
+
+    reportsXML.reports.report.push(report);
+
+    const xml = new Builder().buildObject(reportsXML);
+    fs.writeFileSync(xmlFilePath, xml, "utf-8");
+}
+
+async function writeResources(reportInfo, extractLoc) {
+    if (reportInfo.resources) {
+        let binaryBuffer = Buffer.from(reportInfo.resources, "base64");
+        const reportName = path.basename(reportInfo.reportName, path.extname(reportInfo.reportName));
+
+        let outputDir = extractLoc + "/" + reportInfo.reportFolder + "/" + reportName;
+
+        fs.mkdirSync(outputDir, { recursive: true });
+
+        for (const file of fs.readdirSync(outputDir)) {
+            fs.unlinkSync(path.join(outputDir, file));
+        }
+
+        await new Promise((resolve, reject) => {
+            yauzl.fromBuffer(binaryBuffer, { lazyEntries: true }, (err, zipFile) => {
+                if (err) reject(err);
+                zipFile.readEntry();
+                zipFile.on("entry", function (entry) {
+                    if (/\/$/.test(entry.fileName)) {
+                        // Directory file names end with '/'
+                        fs.mkdirSync(path.join(outputDir, entry.fileName), { recursive: true });
+
+                        zipFile.readEntry();
+                    } else {
+                        // File entry
+                        zipFile.openReadStream(entry, (err, readStream) => {
+                            if (err) reject(err);
+                            const filePath = path.join(outputDir, entry.fileName);
+                            fs.mkdirSync(path.dirname(filePath), { recursive: true });
+
+                            readStream.pipe(fs.createWriteStream(filePath));
+                            readStream.on("end", () => {
+                                zipFile.readEntry();
+                                resolve();
+                            });
+                        });
+                    }
+                });
+                zipFile.on("end", () => {});
+            });
+        });
+    }
+}
+
+async function createZipFromFolder(folderPath) {
+    let result = await new Promise((resolve, reject) => {
+        const archive = archiver("zip", {
+            zlib: { level: 9 } // Sets the compression level.
+        });
+
+        const bufferStream = new PassThrough();
+        let chunks = [];
+
+        bufferStream.on("data", (chunk) => {
+            chunks.push(chunk);
+        });
+
+        // Good practice to catch warnings (like stat failures and other non-blocking errors)
+        archive.on("warning", function (err) {
+            if (err.code === "ENOENT") {
+                console.warn(err);
+            } else {
+                // Throw error for any unexpected warning
+                reject(err);
+            }
+        });
+
+        // Catch errors explicitly
+        archive.on("error", function (err) {
+            reject(err);
+        });
+
+        archive.on("finish", function () {
+            const fullBuffer = Buffer.concat(chunks);
+            const base64String = fullBuffer.toString("base64");
+            resolve(base64String);
+        });
+
+        // Pipe archive data to the file
+        archive.pipe(bufferStream);
+
+        // // Append files from a directory
+        archive.directory(folderPath, false);
+
+        // Finalize the archive (ie we are done appending files but streams have to finish yet)
+        // 'close', 'end' or 'finish' may be fired right after calling this method so register to them beforehand
+        archive.finalize();
+    });
+
+    return result;
 }
 
 async function asyncForEach(array, callback) {

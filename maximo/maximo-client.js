@@ -41,8 +41,8 @@ export default class MaximoClient {
         // keep a reference to the config for later use.
         this.config = config;
 
-        this.requiredScriptVersion = "1.34.0";
-        this.currentScriptVersion = "1.34.0";
+        this.requiredScriptVersion = "1.38.0";
+        this.currentScriptVersion = "1.38.0";
 
         if (config.ca) {
             https.globalAgent.options.ca = config.ca;
@@ -665,6 +665,26 @@ export default class MaximoClient {
 
     }
 
+    async postReport(report) {
+        if (!this._isConnected) {
+            await this.connect();
+        }
+
+        const options = {
+            url: "script/sharptree.autoscript.report",
+            method: MaximoClient.Method.POST,
+            headers: {
+                "Content-Type": "text/plain",
+                Accept: "application/json"
+            },
+            data: report
+        };
+        
+        const result = await this.client.request(options);
+
+        return result.data;
+    }
+
     async postForm(form) {
 
         if (!this._isConnected) {
@@ -1124,6 +1144,45 @@ export default class MaximoClient {
 
         if (response.data.status === 'success') {
             return response.data.inspectionForms;
+        } else {
+            throw new Error(response.data.message);
+        }
+    }
+
+    async getAllReports() {
+        const headers = new Map();
+        headers["Content-Type"] = "application/json";
+
+        let options = {
+            url: "script/sharptree.autoscript.report",
+            method: MaximoClient.Method.GET,
+            headers: { common: headers }
+        };
+        // @ts-ignore
+        let response = await this.client.request(options);
+
+        if (response.data.status === "success") {
+            return response.data.reports;
+        } else {
+            throw new Error(response.data.message);
+        }
+    }
+
+    async getReport(reportId) {
+        const headers = new Map();
+        headers["Content-Type"] = "application/json";
+
+        let options = {
+            url: `script/sharptree.autoscript.report/${reportId}`,
+            method: MaximoClient.Method.GET,
+            headers: { common: headers }
+        };
+
+        // @ts-ignore
+        let response = await this.client.request(options);
+
+        if (response.data.status === "success") {
+            return response.data.report;
         } else {
             throw new Error(response.data.message);
         }
