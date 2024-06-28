@@ -81,7 +81,7 @@ const extract = {
                 global: false
             })
             .option("type", {
-                desc: 'The type of object to extract, "script", "screen", "report" or "form". Defaults to "script".',
+                desc: 'The type of object to extract,"form", "report", "screen" or "script". Defaults to "script".',
                 type: "string",
                 global: false
             })

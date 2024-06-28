@@ -1,4 +1,7 @@
 # Release Notes
+## 1.15.4
+- Add support for report extract and deploy.  All fixes from the VS Code extensions included.
+  
 ## 1.14.3
 - Updated security to ensure only users with SHARPTREE_UTILS : DEPLOYSCRIPT can perform deploy actions.
   
